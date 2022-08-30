@@ -1,0 +1,118 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap');
+
+.table {
+    display: grid;
+    grid-column: 2 / span 2;
+    grid-row: 2 / span 2;
+    grid-auto-flow: dense;
+    border: 2px solid rgb(62, 38, 4);
+    background-color: bisque;
+    border-radius: 6rem;
+    padding: 3rem;
+    text-align: center;
+}
+
+#bids-header, .bids-container {
+    grid-column: 2;
+}
+
+#offers-header, .offers-container {
+    grid-column: 4;
+}
+
+.bid-input-container, .bids-header-container {
+    grid-column: 1;
+}
+
+.offer-input-container, .offers-header-container {
+    grid-column: 5;
+}
+
+.bid-input, .offer-input {
+    height: 2rem;
+    width: 2rem;
+    font-size: 1.75rem;
+}
+
+.image-wrapper {
+     grid-column: 3;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+}
+
+.suit-image {
+    width: 2rem;
+    height: auto;
+}
+
+.filter-red {
+    filter: invert(12%) sepia(93%) saturate(6135%) hue-rotate(2deg) brightness(102%) contrast(116%);
+}
+
+.order-container, .bid-input-container, .offer-input-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+}
+
+.bid-input-container, .offer-input-container, .image-wrapper {
+    padding: 0 1rem;
+}
+
+.price {
+    font-weight: 600;
+    font-size: 1.6rem;
+    padding-right: 1rem;
+    width: 2.4rem;
+}
+
+.poster {
+    display: block;
+    color: rgb(113, 112, 112);
+    white-space: nowrap;
+    padding-bottom: 0.5rem;
+}
+
+.no-one {
+    display: block;
+    color: rgb(113, 112, 112);
+    white-space: nowrap;
+}
+
+.fill, .cancel {
+    padding: 3px;
+    white-space: nowrap;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.hit {
+    color: darkred;
+    background-color: rgb(250, 200, 200);
+}
+
+.lift {
+    color: darkgreen;
+    background-color: rgb(200, 250, 200);
+}
+
+.fill {
+    border: 1px solid gray;
+}
+
+.price-fill-container {
+    width: 3.5rem;
+}
+
+.cancel-icon {
+    color: red;
+    cursor: pointer;
+}
+
+.cancel-icon-big {
+    height: 2rem;
+    padding-top: 1rem;
+}

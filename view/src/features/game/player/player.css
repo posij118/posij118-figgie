@@ -1,0 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap');
+
+.player {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-wrap: wrap
+}
+
+.o270, .o54, .o90, .o126 {
+    flex-direction: column;
+}
+
+.o270 {
+    grid-column: 2 / span 2;
+    grid-row: 4;
+}
+
+.o342, .o0 {
+    grid-column: 4;
+    grid-row: 2 / span 2;
+}
+
+.o54 {
+    grid-row: 1;
+    grid-column: 3 / span 2;
+}
+
+.o90 {
+    grid-row: 1;
+    grid-column: 2 / span 2;
+}
+
+.o126 {
+    grid-row: 1;
+    grid-column: 1 / span 2;
+}
+
+.o180, .o198 {
+    grid-row: 2 / span 2;
+    grid-column: 1;
+}
+
+.placeholder-card, .card {
+    border: 3px solid black;
+    overflow: hidden;
+    border-radius: 10px;
+    height: 5rem;
+    width: 3rem;
+    z-index: inherit;
+    background: rgb(255,255,255);
+    background: linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(245,245,247,1) 35%, rgba(216,220,221,1) 100%); 
+}
+
+.clubs.visible {
+    border: 3px solid darkblue;
+}
+
+.diamonds.visible {
+    border: 3px solid orangered;
+}
+
+.hearts.visible {
+    border: 3px solid red;
+}
+
+.cards-vertical, .cards-horizontal {
+    display: flex;
+    margin: 1rem;
+}
+
+.cards-vertical {
+    flex-direction: column;
+    max-height: 15rem;
+    padding-bottom: 5rem;
+}
+
+.cards-horizontal {
+    max-width: 15rem;
+    padding-right: 3rem;
+}
+
+.card-container-horizontal {
+    display: inline-block;
+}
+
+.card-container {
+    overflow: hidden;
+}
+
+.card-symbol {
+    margin-top: 0.25rem;
+    margin-left: 0.25rem;
+    width: 0.5rem;
+    height: auto;
+}
+
+.filter-red {
+    filter: invert(12%) sepia(93%) saturate(6135%) hue-rotate(2deg) brightness(102%) contrast(116%);
+}
+
+.info {
+    display: flex;
+    flex-wrap: wrap;
+
+    justify-content: center;
+    align-items: center;
+}
+
+.info .svg-inline--fa {
+    padding: 0 0.5rem;
+}
+
+.placeholder-chips {
+    height: 1rem;
+    width: 1rem;
+    border: 2px yellow;
+    border-radius: 0.5rem;
+}
+
+.player-name-container, .chips-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Space Mono', monospace;
+}

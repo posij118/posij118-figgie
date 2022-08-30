@@ -1,0 +1,6 @@
+.game {
+    display: grid;
+    margin: 4rem 15% 0 15%;
+    min-height: 50rem;
+    grid-template-columns: 7rem 1fr 1fr 7rem;
+}

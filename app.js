@@ -30,7 +30,7 @@ app.use(morgan("dev"));
 app.use(cors());
 app.use(bodyParser.json());
 app.use(cookieParser());
-app.use(express.static('view/build'));
+app.use(express.static("view/build"));
 app.use("/", router);
 
 const server = app.listen(PORT, () => {
@@ -48,6 +48,8 @@ server.on("upgrade", (request, socket, head) => {
 
 wsServer.on("connection", (socket) => {
   console.log("A connection was established");
+  setInterval(() => wsServer.clients.forEach((client) => client.ping()), 30000);
+
   socket.on("message", async (data) => {
     const { type, payload } = JSON.parse(data);
     let response;

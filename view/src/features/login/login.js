@@ -33,7 +33,7 @@ export const Login = (props) => {
       wsClient.current.close();
     }
 
-    const PORT = process.env.port || 8000;
+    const PORT = process.env.PORT || 8000;
     const URL = "ws://localhost:" + String(PORT);
     wsClient.current = new WebSocket(URL);
 

@@ -30,7 +30,7 @@ app.use(morgan("dev"));
 app.use(cors());
 app.use(bodyParser.json());
 app.use(cookieParser());
-
+app.use(express.static('view/build'));
 app.use("/", router);
 
 const server = app.listen(PORT, () => {

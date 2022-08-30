@@ -4,7 +4,6 @@ const path = require('path');
 
 router.get("*", (req, res) => {
   let url = path.join(__dirname, "../view/build", "index.html");
-    console.log(url);
   if (!url.startsWith("/app/"))
     // since we're on local windows
     url = url.substring(1);

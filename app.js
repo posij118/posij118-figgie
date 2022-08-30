@@ -24,7 +24,7 @@ types.setTypeParser(20, function (val) {
   return parseInt(val, 10);
 });
 
-const PORT = process.env.port || 8000;
+const PORT = process.env.port || 80;
 
 app.use(morgan("dev"));
 app.use(cors());

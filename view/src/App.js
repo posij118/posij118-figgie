@@ -26,15 +26,16 @@ function App() {
             userName={userName}
           />
         </Route>
-        <Route path="/login">
-          <Login
+        <Route
+          path="/login"
+          render={(props) => <Login {...props}
             gameName={gameName}
             setGameName={setGameName}
             userName={userName}
             setUserName={setUserName}
             wsClient={wsClient}
-          />
-        </Route>
+          />}
+        />
         <Route path="/">
           <Redirect to="/login"></Redirect>
         </Route>

@@ -32,9 +32,10 @@ export const Login = (props) => {
           null;
       wsClient.current.close();
     }
-    
-    const URL = props.location.pathname.replace(/^http/, "ws");
-    if (!process.env.LOCAL)
+
+    let URL = window.location.href
+      .replace(/^http/, "ws")
+      .replace("3000", "8000");
     wsClient.current = new WebSocket(URL);
 
     wsClient.current.onopen = (event) => {

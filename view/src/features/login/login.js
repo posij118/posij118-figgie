@@ -32,9 +32,9 @@ export const Login = (props) => {
           null;
       wsClient.current.close();
     }
-
-    const PORT = process.env.PORT || 8000;
-    const URL = "ws://localhost:" + String(PORT);
+    
+    const URL = props.location.pathname.replace(/^http/, "ws");
+    if (!process.env.LOCAL)
     wsClient.current = new WebSocket(URL);
 
     wsClient.current.onopen = (event) => {

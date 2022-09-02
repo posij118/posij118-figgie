@@ -19,6 +19,7 @@ export const Table = (props) => {
   const gameDurationMiliseconds = useSelector(selectGameDuration);
   const [remainingSeconds, setRemainingSeconds] = useState(null);
   const [gameFinished, setGameFinished] = useState(false);
+  const [sleepTimeout, setSleepTimeout] = useState(null);
 
   useEffect(() => {
     if (gameDurationMiliseconds)
@@ -34,14 +35,19 @@ export const Table = (props) => {
     ) {
       const sleep = async () =>
         await new Promise((resolve, reject) => {
-          setTimeout(() => {
-            setRemainingSeconds((prev) => prev - 1);
-            resolve("DONE");
-          }, Math.max(startingTimestamp - Date.now() - 1000 * (remainingSeconds - 1) + gameDurationMiliseconds, 900));
+          setSleepTimeout(
+            setTimeout(() => {
+              setRemainingSeconds((prev) => prev - 1);
+              resolve("DONE");
+            }, Math.max(startingTimestamp - Date.now() - 1000 * (remainingSeconds - 1) + gameDurationMiliseconds, 900))
+          );
         });
 
       sleep();
     } else if (remainingSeconds === -1) setGameFinished(true);
+
+    return () => { if (sleepTimeout) clearTimeout(sleepTimeout) }
+    //eslint-disable-next-line
   }, [remainingSeconds, startingTimestamp, gameDurationMiliseconds]);
 
   const handleChange = (e, suitTypeIdentifier) => {

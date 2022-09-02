@@ -64,7 +64,7 @@ export const PreGame = (props) => {
             <div className="previous-goal-suit-container">
               Previous goal suit was
               <img
-                className={`suit-image ${
+                className={`suit-image-pre-game ${
                   ["diamonds", "hearts"].includes(previousGoalSuit)
                     ? "filter-red"
                     : ""

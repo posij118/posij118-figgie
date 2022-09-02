@@ -1,6 +1,33 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const path = require('path');
+const path = require("path");
+const bcrypt = require("bcrypt");
+const { checkIfUserExists } = require("../model/pre-game");
+const { transactionDecorator } = require("../utils/transaction-decorator");
+const { lockUsers, registerUser } = require("../model/session");
+
+const registerMiddleware = transactionDecorator(async (client, req, res) => {
+  const userName = req.body.userName;
+  const password = req.body.password;
+
+  if (userName.length > 6) {
+    res.status(400).send('Wrong format of an username or password.');
+    return;
+  };
+
+  await lockUsers(client);
+  const userExists = await checkIfUserExists(client, userName);
+  if (userExists) {
+    res.status(400).send('User already exists.');
+    return;
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  await registerUser(client, userName, hashedPassword);
+  res.send('Registration successful');
+});
+
+router.post("/register");
 
 router.get("*", (req, res) => {
   let url = path.join(__dirname, "../view/build", "index.html");

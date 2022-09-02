@@ -11,7 +11,7 @@ const {
   getCardsChipsWsIdByGameId,
   lockGameId,
 } = require("../model/game");
-const { getGameIdByWsId } = require("../model/pre-game");
+const { getGameIdByWsId, getWsIdsByGameId } = require("../model/pre-game");
 const {
   getSuitNameFromSuitTypeIndentifier,
   getTypeFromSuitTypeIdentifier,
@@ -20,6 +20,7 @@ const {
 const { transactionDecorator } = require("../utils/transaction-decorator");
 const { SOCKET_TYPES, TYPES } = require("../view/src/utils/constants");
 const { capitalize } = require("../utils/helper-functions");
+const { updateGameIdByWsId } = require("../model/end-game");
 
 const postOrders = async (client, socket, orders) => {
   const gameId = await getGameIdByWsId(client, socket.id);
@@ -38,9 +39,7 @@ const postOrders = async (client, socket, orders) => {
     const suit = getSuitNameFromSuitTypeIndentifier(suitTypeIdentifier);
     const oppositeType = type === "buy" ? "sell" : "buy";
     const oppositeSuitTypeIdentifier =
-      type === "buy"
-        ? `offers${capitalize(suit)}`
-        : `bids${capitalize(suit)}`;
+      type === "buy" ? `offers${capitalize(suit)}` : `bids${capitalize(suit)}`;
 
     if (
       type === "sell" &&
@@ -201,8 +200,34 @@ const fillOrder = async (client, socket, suitTypeIdentifier, orderId) => {
   }
 };
 
+const leaveGame = async (client, socket) => {
+  const userId = await getUserIdByWsId(client, socket.id);
+  const userName = await getUserNameByUserId(client, userId);
+  const gameId = await getGameIdByWsId(client, socket.id);
+  await lockGameId(client, gameId);
+
+  await updateGameIdByWsId(client, null, socket.id);
+  const wsIds = await getWsIdsByGameId(client, gameId);
+
+  return {
+    type: TYPES.PLAYER_LEFT,
+    socketTypesToInform: SOCKET_TYPES.MAP_WS_ID_TO_PAYLOAD,
+    payload: Object.fromEntries(
+      wsIds.map((wsIdToInform) => [
+        wsIdToInform,
+        {
+          type: TYPES.PLAYER_LEFT,
+          socketTypesToInform: SOCKET_TYPES.MAP_WS_ID_TO_PAYLOAD,
+          payload: userName,
+        },
+      ])
+    ),
+  };
+};
+
 module.exports.postOrders = transactionDecorator(postOrders);
 module.exports.cancelAllUserOrders = transactionDecorator(cancelAllUserOrders);
 module.exports.cancelSuitTypeOrders =
   transactionDecorator(cancelSuitTypeOrders);
 module.exports.fillOrder = transactionDecorator(fillOrder);
+module.exports.leaveGame = transactionDecorator(leaveGame);

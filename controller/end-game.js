@@ -12,7 +12,7 @@ const { lockGameId, deleteOrdersByGameId } = require("../model/game");
 const { transactionDecorator } = require("../utils/transaction-decorator");
 const { SOCKET_TYPES, TYPES } = require("../view/src/utils/constants");
 const { zip } = require("../utils/helper-functions");
-const { createGame, getWsIdsByGameId } = require("../model/pre-game");
+const { createGame, getWsIdsByGameId, getGameIdByGameName } = require("../model/pre-game");
 
 const scoreGame = async (client, gameId) => {
   const goalSuit = await getGoalSuitByGameId(client, gameId);
@@ -45,10 +45,12 @@ const endGame = async (client, gameId) => {
 
   await lockGameId(client, gameId);
   const chips = await scoreGame(client, gameId);
+  const previousGoalSuit = await getGoalSuitByGameId(client, gameId);
   await deleteOrdersByGameId(client, gameId);
   await restoreUsersToDefaultByGameId(client, gameId);
   await moveGameToArchiveByGameId(client, gameId);
-  const newGameId = await createGame(client, gameName, false);
+  await createGame(client, gameName, false);
+  const newGameId = await getGameIdByGameName(client, gameName);
 	for (const wsId of wsIds) {
 		await updateGameIdByWsId(client, newGameId, wsId);
 	}
@@ -59,7 +61,7 @@ const endGame = async (client, gameId) => {
     payload[wsId] = {
       socketTypesToInform: SOCKET_TYPES.MAP_WS_ID_TO_PAYLOAD,
       type: TYPES.END_GAME,
-      payload: { chips, newGameId },
+      payload: { chips, newGameId, previousGoalSuit },
     };
   });
 

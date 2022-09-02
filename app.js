@@ -6,7 +6,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const WebSocket = require("ws");
-const { addNewGuest, toggleReady } = require("./controller/pre-game");
+const { addNewGuestToGame, toggleReady } = require("./controller/pre-game");
 const { v4: uuidv4 } = require("uuid");
 const { getWsIdsByGameId, getGameIdByWsId } = require("./model/pre-game");
 const router = require("./routes/routes");
@@ -16,15 +16,17 @@ const {
   cancelSuitTypeOrders,
   cancelAllUserOrders,
   fillOrder,
+  leaveGame,
 } = require("./controller/game");
 const { endGame } = require("./controller/end-game");
-
+const { deleteSession } = require("./controller/session");
 const types = require("pg").types;
+
+const PORT = process.env.PORT || 8000;
+
 types.setTypeParser(20, function (val) {
   return parseInt(val, 10);
 });
-
-const PORT = process.env.PORT || 8000;
 
 app.use(morgan("dev"));
 app.use(cors());
@@ -40,15 +42,19 @@ const server = app.listen(PORT, () => {
 const wsServer = new WebSocket.Server({ server: app });
 
 server.on("upgrade", (request, socket, head) => {
-  console.log("A connection has upgraded");
   wsServer.handleUpgrade(request, socket, head, (socket) => {
     wsServer.emit("connection", socket, request);
   });
 });
 
 wsServer.on("connection", (socket) => {
-  console.log("A connection was established");
-  setInterval(() => wsServer.clients.forEach((client) => client.ping()), 30000);
+  setInterval(() => socket.ping(), 30000);
+  setTimeout(async () => {
+    const response = await leaveGame(socket);
+    broadcast(socket, response);
+    deleteSession(socket.id);
+    socket.close();
+  }, process.env.SOCKET_CLOSE || 1000 * 60 * 60 * 24);
 
   socket.on("message", async (data) => {
     const { type, payload } = JSON.parse(data);
@@ -60,7 +66,11 @@ wsServer.on("connection", (socket) => {
           if (client === socket) client.id = wsId;
         });
 
-        response = await addNewGuest(payload.userName, payload.gameName, wsId);
+        response = await addNewGuestToGame(
+          payload.userName,
+          payload.gameName,
+          wsId
+        );
         break;
       case CLIENT.MESSAGE.TOGGLE_READY:
         response = await toggleReady(socket);
@@ -68,9 +78,8 @@ wsServer.on("connection", (socket) => {
           const gameId = await getGameIdByWsId(null, socket.id);
           setTimeout(async () => {
             const broadcastObject = await endGame(gameId);
-            console.log(broadcastObject);
             await broadcast(socket, broadcastObject);
-          }, 24000);
+          }, process.env.GAME_DURATION || 240000);
         }
         break;
       case CLIENT.MESSAGE.POST_ORDERS:
@@ -89,9 +98,16 @@ wsServer.on("connection", (socket) => {
           payload.orderId
         );
         break;
+      case CLIENT.MESSAGE.LEAVE_GAME:
+        response = await leaveGame(socket);
+        break;
     }
 
     await broadcast(socket, response);
+  });
+
+  socket.on("close", async () => {
+    deleteSession(socket.id);
   });
 });
 

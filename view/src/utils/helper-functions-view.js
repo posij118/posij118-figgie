@@ -7,6 +7,9 @@ export const getSuitNameFromSuitTypeIndentifier = (suitTypeIdentifier) => {
 export const zip = (x, y) =>
   Array.from(Array(Math.max(x.length, y.length)), (_, i) => [x[i], y[i]]);
 
+export const zipThree = (x, y, z) =>
+  Array.from(Array(Math.max(x.length, y.length, z.length)), (_, i) => [x[i], y[i], z[i]]);
+
 export const moveIndexInFront = (arr, index) => {
   if (index === null) return [];
   const movedValue = arr[index];

@@ -1,5 +1,6 @@
-const pool = require("../database");
-const { initializeAndReleaseClientDecorator } = require("../utils/initialize-and-release-decorator");
+const {
+  initializeAndReleaseClientDecorator,
+} = require("../utils/initialize-and-release-decorator");
 
 const checkIfGameExists = async (client, gameName) => {
   const response = await client.query("SELECT * FROM games WHERE name=$1", [
@@ -18,18 +19,16 @@ const checkIfUserExists = async (client, userName) => {
 };
 
 const createGame = async (client, gameName, isRated) => {
-  const response = await client.query(
+  await client.query(
     "INSERT INTO games (name, is_rated) VALUES ($1, $2) RETURNING id",
     [gameName, isRated]
   );
-
-  return response.rows[0].id;
 };
 
 const getPreGameInfoByName = async (client, gameName) => {
   const response = await client.query(
     `
-	SELECT games.id, users.username, users.ready
+	SELECT games.id, users.username, users.ready, users.chips
 		FROM games INNER JOIN users
 			ON games.id = users.game_id
 		WHERE games.name = $1
@@ -41,18 +40,19 @@ const getPreGameInfoByName = async (client, gameName) => {
   return response.rows;
 };
 
-const insertNewGuest = async (client, wsId, userName, gameId) => {
+const insertNewGuest = async (client, wsId, userName, gameId, chips) => {
   await client.query(
     `
 		INSERT INTO users (
 			ws_session_id,
 			username,
 			game_id,
+      chips,
 			is_registered,
 			ready
-		) VALUES ($1, $2, $3, $4, $5)
+		) VALUES ($1, $2, $3, $4, $5, $6)
 	`,
-    [wsId, userName, gameId, false, false]
+    [wsId, userName, gameId, chips, false, false]
   );
   return;
 };
@@ -74,7 +74,7 @@ const getWsIdsByGameId = async (client, gameId) => {
     [gameId]
   );
 
-  return response.rows.map((row) => row.ws_session_id);
+  return response.rows.map((row) => row.ws_session_id).filter((wsId) => wsId);
 };
 
 const updateReadyByWsId = async (client, wsId) => {
@@ -98,6 +98,14 @@ const getReadyByGameId = async (client, gameId) => {
   return response.rows.map((row) => row.ready);
 };
 
+const getGameIdByGameName = async (client, gameName) => {
+  const response = await client.query(`SELECT id FROM games WHERE name=$1`, [
+    gameName,
+  ]);
+
+  return response.rows[0].id;
+};
+
 module.exports.checkIfGameExists = checkIfGameExists;
 module.exports.checkIfUserExists = checkIfUserExists;
 module.exports.createGame = createGame;
@@ -107,5 +115,6 @@ module.exports.getWsIdsByGameId = getWsIdsByGameId;
 module.exports.updateReadyByWsId = updateReadyByWsId;
 module.exports.getGameIdByWsId = getGameIdByWsId;
 module.exports.getReadyByGameId = getReadyByGameId;
+module.exports.getGameIdByGameName = getGameIdByGameName;
 
 module.exports = initializeAndReleaseClientDecorator(module.exports);

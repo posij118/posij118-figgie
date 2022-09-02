@@ -2,6 +2,7 @@ const {
   updateUserByWsId,
   updateGameByGameId,
   getCardsChipsWsIdByGameId,
+  getStartingTimestampByGameId,
 } = require("../model/game");
 const { getWsIdsByGameId } = require("../model/pre-game");
 const {
@@ -9,6 +10,7 @@ const {
   SOCKET_TYPES,
   TYPES,
 } = require("../view/src/utils/constants");
+const dotenv = require("dotenv").config();
 
 const randomShuffle = (arr) => {
   return arr
@@ -68,7 +70,6 @@ const startGame = async (client, gameId) => {
 
   const response = await getCardsChipsWsIdByGameId(client, gameId);
   let chips = response.map((row) => row.chips);
-  if (chips[0] === null) chips = wsIds.map((val) => 350);
 
   wsIds.forEach(async (wsId, index) => {
     await updateUserByWsId(client, wsId, {
@@ -100,10 +101,10 @@ const startGame = async (client, gameId) => {
               spades: spades[index],
               diamonds: diamonds[index],
               hearts: hearts[index],
-              chips: chips.map(userChips => userChips - 200 / wsIds.length),
+              chips: chips.map((userChips) => userChips - 200 / wsIds.length),
               numCards: Array(wsIds.length).fill(40 / wsIds.length),
-              startingTimestamp: startedAt,
               gameId,
+              gameDuration: process.env.GAME_DURATION,
             },
           },
         ];

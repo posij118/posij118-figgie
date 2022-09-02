@@ -27,6 +27,8 @@ const gameReducerObject = createSlice({
     gameExists: false,
     gameIsLoading: false,
     startingTimestamp: null,
+    gameDuration: null,
+    previousGoalSuit: null,
   },
 
   reducers: {
@@ -54,6 +56,8 @@ const gameReducerObject = createSlice({
         gameExists: true,
         gameIsLoading: false,
         startingTimestamp: gameConfig.startingTimestamp,
+        gameDuration: gameConfig.gameDuration,
+        previousGoalSuit: null,
       };
 
       return state;
@@ -148,6 +152,48 @@ const gameReducerObject = createSlice({
     updateNumCards: (state, action) => {
       state.numCards = action.payload;
     },
+
+    endGame: (state, action) => {
+      state = {
+        playerNames: state.playerNames,
+        clubs: 0,
+        spades: 0,
+        diamonds: 0,
+        hearts: 0,
+        chips: action.payload.chips,
+        numCards: state.playerNames.map((playerName) => null),
+        ready: state.playerNames.map((playerName) => false),
+        orders: {
+          bidsClubs: [],
+          bidsSpades: [],
+          bidsDiamonds: [],
+          bidsHearts: [],
+          offersClubs: [],
+          offersSpades: [],
+          offersDiamonds: [],
+          offersHearts: [],
+        },
+        gameExists: false,
+        gameIsLoading: false,
+        startingTimestamp: null,
+        gameDuration: null,
+        previousGoalSuit: action.payload.previousGoalSuit,
+      };
+
+      return state;
+    },
+
+    deletePlayer: (state, action) => {
+      const deletedPlayerIndex = state.playerNames.findIndex(
+        (playerName) => playerName === action.payload
+      );
+      state.playerNames.splice(deletedPlayerIndex, 1);
+      state.chips.splice(deletedPlayerIndex, 1);
+      state.numCards.splice(deletedPlayerIndex, 1);
+      state.ready.splice(deletedPlayerIndex, 1);  
+
+      return state;
+    },
   },
 });
 
@@ -165,6 +211,8 @@ export const deleteOrdersByPlayerName =
   gameReducerObject.actions.deleteOrdersByPlayerName;
 export const updateNumCards = gameReducerObject.actions.updateNumCards;
 export const deleteAllOrders = gameReducerObject.actions.deleteAllOrders;
+export const endGame = gameReducerObject.actions.endGame;
+export const deletePlayer = gameReducerObject.actions.deletePlayer;
 
 export const selectCards = (state) => {
   return {
@@ -182,3 +230,6 @@ export const selectGameExists = (state) => state.game.gameExists;
 export const selectReady = (state) => state.game.ready;
 export const selectGameIsLoading = (state) => state.game.gameIsLoading;
 export const selectNumCards = (state) => state.game.numCards;
+export const selectStartingTimestamp = (state) => state.game.startingTimestamp;
+export const selectGameDuration = (state) => state.game.gameDuration;
+export const selectPreviousGoalSuit = (state) => state.game.previousGoalSuit;

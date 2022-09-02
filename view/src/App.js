@@ -6,6 +6,7 @@ import { Header } from "./features/header/header";
 import { Game } from "./features/game/game";
 import { PreGame } from "./features/pre-game/pre-game";
 import { Login } from "./features/login/login";
+import { LoggedOut } from "./features/logged-out/logged-out";
 
 function App() {
   const wsClient = useRef(null);
@@ -15,7 +16,7 @@ function App() {
   return (
     <div className="app">
       <Router>
-        <Header />
+        <Header wsClient={wsClient } />
         <Route path="/game/:gameId">
           <Game userName={userName} wsClient={wsClient} />
         </Route>
@@ -36,6 +37,12 @@ function App() {
             wsClient={wsClient}
           />}
         />
+        <Route path='/logged-out'>
+          <LoggedOut />
+        </Route>
+        <Route path="/lobby">
+          <Redirect to="/login"></Redirect>
+        </Route>
         <Route path="/">
           <Redirect to="/login"></Redirect>
         </Route>

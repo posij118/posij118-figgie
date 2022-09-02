@@ -185,6 +185,15 @@ const lockGameId = async (client, gameId) => {
   return;
 };
 
+const getStartingTimestampByGameId = async (client, gameId) => {
+  const response = await client.query(
+    `SELECT started_at FROM games WHERE id=$1`,
+    [gameId]
+  );
+
+  return new Date(response.rows[0].started_at).getTime();
+};
+
 module.exports.updateUserByWsId = updateUserByWsId;
 module.exports.updateGameByGameId = updateGameByGameId;
 module.exports.getUserIdByWsId = getUserIdByWsId;
@@ -198,5 +207,6 @@ module.exports.getOrdersBySuitTypeGameId = getOrdersBySuitTypeGameId;
 module.exports.updateGameState = updateGameState;
 module.exports.getCardsChipsWsIdByGameId = getCardsChipsWsIdByGameId;
 module.exports.lockGameId = lockGameId;
+module.exports.getStartingTimestampByGameId = getStartingTimestampByGameId;
 
 module.exports = initializeAndReleaseClientDecorator(module.exports);

@@ -14,6 +14,8 @@ import {
   updateCardsOrChips,
   updateNumCards,
   deleteAllOrders,
+  endGame,
+  deletePlayer,
 } from "../../app/game/game-slice";
 
 export const Login = (props) => {
@@ -59,11 +61,18 @@ export const Login = (props) => {
           if (payload.playerNames)
             dispatch(updatePlayerNames(payload.playerNames));
           if (payload.ready) dispatch(updateReady(payload.ready));
+          if (payload.chips)
+            dispatch(updateCardsOrChips({ chips: payload.chips }));
           if (payload.gameId) history.push(`/pre-game/${payload.gameId}`);
           dispatch(setGameToNotLoading());
           break;
         case TYPES.GAME_CONFIG:
-          dispatch(initializeGame(payload));
+          dispatch(
+            initializeGame({
+              ...payload,
+              startingTimestamp: new Date().toString(),
+            })
+          );
           if (payload.gameId) history.push(`/game/${payload.gameId}`);
           break;
         case TYPES.NEW_ORDER:
@@ -85,14 +94,28 @@ export const Login = (props) => {
           dispatch(deleteAllOrders());
           break;
         case TYPES.END_GAME:
-          dispatch(updateCardsOrChips({ chips: payload.chips }));
+          dispatch(
+            endGame({
+              chips: payload.chips,
+              previousGoalSuit: payload.previousGoalSuit,
+            })
+          );
           history.push(`/pre-game/${String(payload.newGameId)}`);
+          break;
+        case TYPES.PLAYER_LEFT:
+          dispatch(deletePlayer(payload));
           break;
         default:
           console.log("No event listener yet", payload);
           break;
       }
     });
+
+    wsClient.current.onclose = (event) => {
+      history.push("/logged-out");
+      props.setUserName("");
+      props.setGameName("");
+    };
   };
 
   return (

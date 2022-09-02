@@ -1,6 +1,11 @@
-import { faCircleXmark } from "@fortawesome/free-solid-svg-icons";
+import { faCircleXmark, faClock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import {
+  selectGameDuration,
+  selectStartingTimestamp,
+} from "../../../app/game/game-slice";
 import { CLIENT, ORDERS_EMPTY } from "../../../utils/constants";
 import { getSuitNameFromSuitTypeIndentifier } from "../../../utils/helper-functions-view";
 import "./table.css";
@@ -8,12 +13,44 @@ import "./table.css";
 export const Table = (props) => {
   const { wsClient, userName, cards, orders } = props;
   const [ordersToPost, setOrdersToPost] = useState(ORDERS_EMPTY);
+  const startingTimestamp = new Date(
+    useSelector(selectStartingTimestamp)
+  ).getTime();
+  const gameDurationMiliseconds = useSelector(selectGameDuration);
+  const [remainingSeconds, setRemainingSeconds] = useState(null);
+  const [gameFinished, setGameFinished] = useState(false);
+
+  useEffect(() => {
+    if (gameDurationMiliseconds)
+      setRemainingSeconds(gameDurationMiliseconds / 1000);
+  }, [gameDurationMiliseconds]);
+
+  useEffect(() => {
+    if (
+      Number.isInteger(remainingSeconds) &&
+      remainingSeconds >= 0 &&
+      gameDurationMiliseconds &&
+      startingTimestamp
+    ) {
+      const sleep = async () =>
+        await new Promise((resolve, reject) => {
+          setTimeout(() => {
+            setRemainingSeconds((prev) => prev - 1);
+            resolve("DONE");
+          }, Math.max(startingTimestamp - Date.now() - 1000 * (remainingSeconds - 1) + gameDurationMiliseconds, 900));
+        });
+
+      sleep();
+    } else if (remainingSeconds === -1) setGameFinished(true);
+  }, [remainingSeconds, startingTimestamp, gameDurationMiliseconds]);
 
   const handleChange = (e, suitTypeIdentifier) => {
     setOrdersToPost((prev) => {
       return {
         ...prev,
-        [suitTypeIdentifier]: e.target.value,
+        [suitTypeIdentifier]: Number.isInteger(Number(e.target.value))
+          ? e.target.value
+          : prev[suitTypeIdentifier],
       };
     });
   };
@@ -58,13 +95,22 @@ export const Table = (props) => {
     );
   };
 
-  return (
+  return gameFinished ? (
+    <p>The game has finished. Waiting for the confirmation of the server.</p>
+  ) : (
     <div className="table">
       <h2 id="bids-header">Bids</h2>
       <h2 id="offers-header">Offers</h2>
       <div className="bids-header-container dummy-elem"></div>
       <div className="offers-header-container dummy-elem"></div>
-      <div className="image-wrapper dummy-elem"></div>
+      <div className="time-container">
+        <h2>
+          <FontAwesomeIcon icon={faClock} />
+          <span className="time">
+            {Math.floor(remainingSeconds / 60)}:{remainingSeconds % 60}
+          </span>
+        </h2>
+      </div>
 
       {Object.entries(orders).map(
         ([suitTypeIdentifier, ordersArray], index) => (
@@ -84,16 +130,21 @@ export const Table = (props) => {
                 ) : (
                   <span className="no-one">No one</span>
                 )}
-                {ordersArray.length && userName !== ordersArray[0].poster ? (
+
+                {ordersArray.length &&
+                userName !== ordersArray[0].poster &&
+                (index % 2 ||
+                  cards[
+                    getSuitNameFromSuitTypeIndentifier(suitTypeIdentifier)
+                  ]) ? (
                   <span
                     className={`fill ${index % 2 ? "hit" : "lift"}`}
                     onClick={() => handleFill(suitTypeIdentifier)}
                   >
-                    {new RegExp("bid").test(suitTypeIdentifier) &&
-                    userName !== ordersArray[0].poster
-                      ? "SELL"
-                      : "BUY"}
+                    {index % 2 ? "BUY" : "SELL"}
                   </span>
+                ) : ordersArray.length && userName !== ordersArray[0].poster ? (
+                  <></>
                 ) : ordersArray.length ? (
                   <span className="cancel">
                     <FontAwesomeIcon

@@ -85,7 +85,7 @@ const getGameNameByGameId = async (client, gameId) => {
 };
 
 const updateGameIdByWsId = async (client, gameId, wsId) => {
-  return await client.query(
+  await client.query(
     `
 			UPDATE users SET
 				game_id=$1
@@ -93,6 +93,7 @@ const updateGameIdByWsId = async (client, gameId, wsId) => {
 		`,
     [gameId, wsId]
   );
+  return;
 };
 
 module.exports.getGoalSuitByGameId = getGoalSuitByGameId;

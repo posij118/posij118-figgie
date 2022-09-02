@@ -7,13 +7,15 @@ const {
   getGameIdByWsId,
   getReadyByGameId,
   updateReadyByWsId,
+  getGameIdByGameName,
 } = require("../model/pre-game");
-const pool = require("../database");
 const { SOCKET_TYPES, TYPES } = require("../view/src/utils/constants");
 const { startGame } = require("./start-game");
 const { transactionDecorator } = require("../utils/transaction-decorator");
+const { deleteInactiveGame } = require("./session");
+const dotenv = require("dotenv").config();
 
-const addNewGuest = async (client, userName, gameName, wsId) => {
+const addNewGuestToGame = async (client, userName, gameName, wsId) => {
   if (userName.length > 6 || gameName.length > 50) {
     return {
       socketTypesToInform: SOCKET_TYPES.ITSELF,
@@ -24,7 +26,6 @@ const addNewGuest = async (client, userName, gameName, wsId) => {
 
   const gameExists = await checkIfGameExists(client, gameName);
   const userExists = await checkIfUserExists(client, userName);
-  let gameId;
 
   if (userExists) {
     return {
@@ -35,10 +36,14 @@ const addNewGuest = async (client, userName, gameName, wsId) => {
   }
 
   if (!gameExists) {
-    gameId = await createGame(client, gameName, false);
+    await createGame(client, gameName, false);
+    setTimeout(() => {
+      deleteInactiveGame(gameId);
+    }, 2 * process.env.SOCKET_CLOSE || 2 * 1000 * 60 * 60 * 24);
   }
 
   const response = await getPreGameInfoByName(client, gameName);
+  const gameId = await getGameIdByGameName(client, gameName);
   const numPlayers = response.length;
 
   if (numPlayers >= 5) {
@@ -49,10 +54,11 @@ const addNewGuest = async (client, userName, gameName, wsId) => {
     };
   }
 
-  gameId = gameId || response[0].id;
-  await insertNewGuest(client, wsId, userName, gameId);
+  const INITIAL_CHIPS = 350;
+  await insertNewGuest(client, wsId, userName, gameId, INITIAL_CHIPS);
   const playerNames = [...response.map((row) => row.username), userName];
   const ready = [...response.map((row) => row.ready), false];
+  const chips = [...response.map((row) => row.chips), INITIAL_CHIPS];
 
   return {
     socketTypesToInform: SOCKET_TYPES.SAME_GAME,
@@ -61,6 +67,7 @@ const addNewGuest = async (client, userName, gameName, wsId) => {
       gameId,
       playerNames,
       ready,
+      chips
     },
   };
 };
@@ -88,5 +95,5 @@ const toggleReady = async (client, socket) => {
   };
 };
 
-module.exports.addNewGuest = transactionDecorator(addNewGuest);
+module.exports.addNewGuestToGame = transactionDecorator(addNewGuestToGame);
 module.exports.toggleReady = transactionDecorator(toggleReady);

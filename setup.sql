@@ -20,8 +20,8 @@ CREATE TABLE users (
   num_spades integer CHECK (num_spades >= 0 AND num_spades <= 12),
   num_diamonds integer CHECK (num_diamonds >= 0 AND num_diamonds <= 12),
   num_hearts integer CHECK (num_hearts >= 0 AND num_hearts <= 12),
-  chips integer,
-  ready bool NOT NULL
+  chips real,
+  ready bool
 );
 
 CREATE TABLE orders (

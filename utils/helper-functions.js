@@ -1,4 +1,4 @@
-const INFINITY = 1000000000000000;
+const INFINITY = 1000000000;
 
 const getSuitNameFromSuitTypeIndentifier = (suitTypeIdentifier) => {
   return new RegExp("bid").test(suitTypeIdentifier)
@@ -18,15 +18,13 @@ const getTypeFromSuitTypeIdentifier = (
 
 const orderComparator = (orderA, orderB) => {
   let directionConstant;
-  if (type === "buy") directionConstant = 1;
+  if (orderA.type === "buy") directionConstant = 1;
   else directionConstant = -1;
   return (
     directionConstant * INFINITY * (orderB.price - orderA.price) +
-    (new Date(orderB.timestamp).getTime() -
-      new Date(orderA.timestamp).getTime())
+    (orderA.timestamp.getTime() - orderB.timestamp.getTime())
   );
 };
-
 
 const capitalize = (str) => {
   return str[0].toUpperCase() + str.slice(1);

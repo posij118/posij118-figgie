@@ -39,7 +39,7 @@ const addNewGuestToGame = async (client, userName, gameName, wsId) => {
     await createGame(client, gameName, false);
     setTimeout(() => {
       deleteInactiveGame(gameId);
-    }, 2 * process.env.SOCKET_CLOSE || 2 * 1000 * 60 * 60 * 24);
+    }, process.env.GAME_TIMEOUT || 1.2 * 1000 * 60 * 60 * 24);
   }
 
   const response = await getPreGameInfoByName(client, gameName);
@@ -59,7 +59,7 @@ const addNewGuestToGame = async (client, userName, gameName, wsId) => {
   const playerNames = [...response.map((row) => row.username), userName];
   const ready = [...response.map((row) => row.ready), false];
   const chips = [...response.map((row) => row.chips), INITIAL_CHIPS];
-
+  
   return {
     socketTypesToInform: SOCKET_TYPES.SAME_GAME,
     type: TYPES.PRE_GAME_CONFIG,

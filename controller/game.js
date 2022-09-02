@@ -148,6 +148,7 @@ const fillOrder = async (client, socket, suitTypeIdentifier, orderId) => {
     type,
     gameId
   );
+
   availableOrders.sort(orderComparator);
 
   const filledOrder = availableOrders.find((order) => order.id === orderId);

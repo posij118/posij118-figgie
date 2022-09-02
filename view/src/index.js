@@ -8,9 +8,11 @@ import { render } from "react-dom";
 
 const root = document.getElementById("root");
 render(
-  <Provider store={store}>
-    <App />
-  </Provider>,
+  <React.StrictMode>
+    <Provider store={store}>
+      <App />
+    </Provider>
+  </React.StrictMode>,
   root
 );
 // If you want to start measuring performance in your app, pass a function

@@ -1,7 +1,7 @@
 const { createSlice } = require("@reduxjs/toolkit");
 const { capitalize } = require("../../utils/helper-functions-view");
 
-const INFINITY = 1000000000000000;
+const INFINITY = 10000000000;
 
 const gameReducerObject = createSlice({
   name: "gameReducer",
@@ -87,8 +87,8 @@ const gameReducerObject = createSlice({
             else directionConstant = -1;
             return (
               directionConstant * INFINITY * (orderB.price - orderA.price) +
-              (new Date(orderB.timestamp).getTime() -
-                new Date(orderA.timestamp).getTime())
+              (new Date(orderA.timestamp).getTime() -
+                new Date(orderB.timestamp).getTime())
             );
           }),
         },

@@ -13,9 +13,29 @@ header a {
 	margin-left: 1rem;
 }
 
+nav {
+	display: flex;
+}
+
 nav .nav-item {
 	color: purple;
 	padding: 1rem;
 	font-size: 1.5rem;
 	font-weight: 500;
+}
+
+.nav-leave-game {
+	cursor: pointer;
+}
+
+.nav-leave-game:hover {
+	color: rgb(96, 3, 96);
+}
+
+nav .nav-item svg {
+	padding-left: 1rem;
+}
+
+nav .nav-item .username {
+	padding: 0 1rem;
 }

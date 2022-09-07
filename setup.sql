@@ -21,7 +21,8 @@ CREATE TABLE users (
   num_diamonds integer CHECK (num_diamonds >= 0 AND num_diamonds <= 12),
   num_hearts integer CHECK (num_hearts >= 0 AND num_hearts <= 12),
   chips real,
-  ready bool
+  ready bool,
+  waiting_game_id bigint REFERENCES games(id)
 );
 
 CREATE TABLE orders (

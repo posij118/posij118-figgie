@@ -4,3 +4,8 @@
     min-height: 50rem;
     grid-template-columns: 7rem 1fr 1fr 7rem;
 }
+
+.waiting-player-container {
+    grid-row: 4;
+    grid-column: 4;
+}

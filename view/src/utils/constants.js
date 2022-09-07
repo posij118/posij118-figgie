@@ -1,6 +1,8 @@
 const CLIENT = {
   MESSAGE: {
     NEW_GUEST: "NEW_GUEST",
+    USER_LOGIN: "USER_LOGIN",
+    JOIN_GAME: "JOIN_GAME",
     TOGGLE_READY: "TOGGLE_READY",
     POST_ORDERS: "POST_ORDERS",
     CANCEL_SUIT_TYPE_ORDERS: "CANCEL_SUIT_TYPE_ORDERS",
@@ -26,6 +28,8 @@ const TYPES = {
   ORDER_FILLED: "ORDER_FILLED",
   END_GAME: "END_GAME",
   PLAYER_LEFT: "PLAYER_LEFT",
+  NEW_WAITING_PLAYER: "NEW_WAITING_PLAYER",
+  GUEST_REGISTRATION_SUCCESSFUL: "GUEST_REGISTRATION_SUCCESSFUL",
 };
 
 // prettier-ignore
@@ -36,7 +40,7 @@ const SUIT_IDS_ARRAY = [
   3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
 ];
 
-const ORDERS_EMPTY = {
+const ORDER_PRICES_EMPTY = {
   bidsClubs: "",
   offersClubs: "",
   bidsSpades: "",
@@ -47,12 +51,24 @@ const ORDERS_EMPTY = {
   offersHearts: "",
 };
 
+const ORDERS_EMPTY = {
+  bidsClubs: [],
+  offersClubs: [],
+  bidsSpades: [],
+  offersSpades: [],
+  bidsDiamonds: [],
+  offersDiamonds: [],
+  bidsHearts:[],
+  offersHearts: [],
+};
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = exports = {
     CLIENT,
     SOCKET_TYPES,
     TYPES,
     SUIT_IDS_ARRAY,
+    ORDER_PRICES_EMPTY,
     ORDERS_EMPTY,
   };
 }

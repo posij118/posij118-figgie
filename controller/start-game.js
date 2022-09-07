@@ -2,7 +2,6 @@ const {
   updateUserByWsId,
   updateGameByGameId,
   getCardsChipsWsIdByGameId,
-  getStartingTimestampByGameId,
 } = require("../model/game");
 const { getWsIdsByGameId } = require("../model/pre-game");
 const {
@@ -104,7 +103,7 @@ const startGame = async (client, gameId) => {
               chips: chips.map((userChips) => userChips - 200 / wsIds.length),
               numCards: Array(wsIds.length).fill(40 / wsIds.length),
               gameId,
-              gameDuration: process.env.GAME_DURATION,
+              gameDuration: Number(process.env.GAME_DURATION) || 240000,
             },
           },
         ];

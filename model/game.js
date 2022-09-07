@@ -1,6 +1,8 @@
+const { capitalize } = require("../utils/helper-functions");
 const {
   initializeAndReleaseClientDecorator,
 } = require("../utils/initialize-and-release-decorator");
+const { ORDERS_EMPTY } = require("../view/src/utils/constants");
 
 const updateUserByWsId = async (client, wsId, updatedValuesWrapper) => {
   const { clubs, spades, diamonds, hearts, chips } = updatedValuesWrapper;
@@ -45,7 +47,8 @@ const getUserIdByWsId = async (client, wsId) => {
     `SELECT id FROM users WHERE ws_session_id=$1`,
     [wsId]
   );
-
+  
+  if (!response.rows.length) return null;
   return response.rows[0].id;
 };
 
@@ -194,6 +197,38 @@ const getStartingTimestampByGameId = async (client, gameId) => {
   return new Date(response.rows[0].started_at).getTime();
 };
 
+const getOrdersByGameId = async (client, gameId) => {
+  const response = await client.query(`
+  SELECT 
+    orders.id,
+    orders.price,
+    orders.timestamp,
+    orders.suit,
+    orders.type,
+    users.username
+  FROM
+   orders INNER JOIN users ON
+   orders.poster = users.id
+   WHERE orders.game_id=$1
+  `, [
+    gameId,
+  ]);
+
+  const orders = ORDERS_EMPTY;
+  response.rows.forEach((row) => {
+    orders[
+      `${row.type === "buy" ? "bids" : "offers"}${capitalize(row.suit)}`
+    ].push({
+      price: row.price,
+      timestamp: row.timestamp,
+      poster: row.username,
+      id: row.id,
+    });
+  });
+
+  return orders;
+};
+
 module.exports.updateUserByWsId = updateUserByWsId;
 module.exports.updateGameByGameId = updateGameByGameId;
 module.exports.getUserIdByWsId = getUserIdByWsId;
@@ -208,5 +243,6 @@ module.exports.updateGameState = updateGameState;
 module.exports.getCardsChipsWsIdByGameId = getCardsChipsWsIdByGameId;
 module.exports.lockGameId = lockGameId;
 module.exports.getStartingTimestampByGameId = getStartingTimestampByGameId;
+module.exports.getOrdersByGameId = getOrdersByGameId;
 
 module.exports = initializeAndReleaseClientDecorator(module.exports);

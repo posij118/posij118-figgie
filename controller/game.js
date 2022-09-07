@@ -11,7 +11,11 @@ const {
   getCardsChipsWsIdByGameId,
   lockGameId,
 } = require("../model/game");
-const { getGameIdByWsId, getWsIdsByGameId } = require("../model/pre-game");
+const {
+  getGameIdByWsId,
+  getWsIdsByGameId,
+  getGameIdOrWaitingGameIdByWsId,
+} = require("../model/pre-game");
 const {
   getSuitNameFromSuitTypeIndentifier,
   getTypeFromSuitTypeIdentifier,
@@ -167,6 +171,7 @@ const fillOrder = async (client, socket, suitTypeIdentifier, orderId) => {
         );
 
         const playersInfo = await getCardsChipsWsIdByGameId(client, gameId);
+        const wsIds = await getWsIdsByGameId(client, gameId);
         const numCards = playersInfo.map(
           (playerInfo) =>
             playerInfo.num_clubs +
@@ -192,8 +197,26 @@ const fillOrder = async (client, socket, suitTypeIdentifier, orderId) => {
           };
         });
 
+        wsIds.forEach((wsId) => {
+          if (
+            !playersInfo
+              .map((playerInfo) => playerInfo.ws_session_id)
+              .includes(wsId)
+          ) {
+            broadcastObject[wsId] = {
+              socketTypesToInform: SOCKET_TYPES.MAP_WS_ID_TO_PAYLOAD,
+              type: TYPES.ORDER_FILLED,
+              payload: {
+                numCards,
+                chips,
+              },
+            };
+          }
+        });
+
         return {
           socketTypesToInform: SOCKET_TYPES.MAP_WS_ID_TO_PAYLOAD,
+          type: TYPES.ORDER_FILLED,
           payload: broadcastObject,
         };
       }
@@ -204,7 +227,7 @@ const fillOrder = async (client, socket, suitTypeIdentifier, orderId) => {
 const leaveGame = async (client, socket) => {
   const userId = await getUserIdByWsId(client, socket.id);
   const userName = await getUserNameByUserId(client, userId);
-  const gameId = await getGameIdByWsId(client, socket.id);
+  const gameId = await getGameIdOrWaitingGameIdByWsId(client, socket.id);
   await lockGameId(client, gameId);
 
   await updateGameIdByWsId(client, null, socket.id);

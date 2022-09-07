@@ -4,27 +4,34 @@ import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import {
   selectGameDuration,
+  selectPlayerNames,
   selectStartingTimestamp,
 } from "../../../app/game/game-slice";
-import { CLIENT, ORDERS_EMPTY } from "../../../utils/constants";
+import { CLIENT, ORDER_PRICES_EMPTY } from "../../../utils/constants";
 import { getSuitNameFromSuitTypeIndentifier } from "../../../utils/helper-functions-view";
 import "./table.css";
 
 export const Table = (props) => {
   const { wsClient, userName, cards, orders } = props;
-  const [ordersToPost, setOrdersToPost] = useState(ORDERS_EMPTY);
+  const [ordersToPost, setOrdersToPost] = useState(ORDER_PRICES_EMPTY);
   const startingTimestamp = new Date(
     useSelector(selectStartingTimestamp)
   ).getTime();
+  const playerNames = useSelector(selectPlayerNames);
   const gameDurationMiliseconds = useSelector(selectGameDuration);
+
   const [remainingSeconds, setRemainingSeconds] = useState(null);
   const [gameFinished, setGameFinished] = useState(false);
   const [sleepTimeout, setSleepTimeout] = useState(null);
 
   useEffect(() => {
-    if (gameDurationMiliseconds)
-      setRemainingSeconds(gameDurationMiliseconds / 1000);
-  }, [gameDurationMiliseconds]);
+    if (gameDurationMiliseconds && startingTimestamp)
+      setRemainingSeconds(
+        Math.ceil(
+          (startingTimestamp - Date.now() + gameDurationMiliseconds) / 1000
+        )
+      );
+  }, [gameDurationMiliseconds, startingTimestamp]);
 
   useEffect(() => {
     if (
@@ -39,14 +46,16 @@ export const Table = (props) => {
             setTimeout(() => {
               setRemainingSeconds((prev) => prev - 1);
               resolve("DONE");
-            }, Math.max(startingTimestamp - Date.now() - 1000 * (remainingSeconds - 1) + gameDurationMiliseconds, 900))
+            }, Math.max(startingTimestamp - Date.now() - 1000 * (remainingSeconds - 1) + gameDurationMiliseconds, 500))
           );
         });
 
       sleep();
     } else if (remainingSeconds === -1) setGameFinished(true);
 
-    return () => { if (sleepTimeout) clearTimeout(sleepTimeout) }
+    return () => {
+      if (sleepTimeout) clearTimeout(sleepTimeout);
+    };
     //eslint-disable-next-line
   }, [remainingSeconds, startingTimestamp, gameDurationMiliseconds]);
 
@@ -69,7 +78,7 @@ export const Table = (props) => {
       })
     );
 
-    setOrdersToPost(ORDERS_EMPTY);
+    setOrdersToPost(ORDER_PRICES_EMPTY);
   };
 
   const handleFill = (suitTypeIdentifier) => {
@@ -113,7 +122,10 @@ export const Table = (props) => {
         <h2>
           <FontAwesomeIcon icon={faClock} />
           <span className="time">
-            {Math.floor(remainingSeconds / 60)}:{remainingSeconds % 60}
+            {Math.floor(remainingSeconds / 60)}:
+            {remainingSeconds % 60 < 10
+              ? `0${remainingSeconds % 60}`
+              : remainingSeconds % 60}
           </span>
         </h2>
       </div>
@@ -139,6 +151,7 @@ export const Table = (props) => {
 
                 {ordersArray.length &&
                 userName !== ordersArray[0].poster &&
+                playerNames.includes(userName) &&
                 (index % 2 ||
                   cards[
                     getSuitNameFromSuitTypeIndentifier(suitTypeIdentifier)
@@ -149,7 +162,9 @@ export const Table = (props) => {
                   >
                     {index % 2 ? "BUY" : "SELL"}
                   </span>
-                ) : ordersArray.length && userName !== ordersArray[0].poster ? (
+                ) : (ordersArray.length &&
+                    userName !== ordersArray[0].poster) ||
+                  !playerNames.includes(userName) ? (
                   <></>
                 ) : ordersArray.length ? (
                   <span className="cancel">
@@ -185,9 +200,11 @@ export const Table = (props) => {
                   if (e.key === "Enter") handleSubmit();
                 }}
                 disabled={
-                  !cards[
+                  (!cards[
                     getSuitNameFromSuitTypeIndentifier(suitTypeIdentifier)
-                  ] && new RegExp("offer").test(suitTypeIdentifier)
+                  ] &&
+                    new RegExp("offer").test(suitTypeIdentifier)) ||
+                  !playerNames.includes(userName)
                 }
               />
             </div>
@@ -215,11 +232,15 @@ export const Table = (props) => {
         )
       )}
       <div className="image-wrapper">
-        <FontAwesomeIcon
-          icon={faCircleXmark}
-          className="cancel-icon cancel-icon-big"
-          onClick={() => handleCancelAll()}
-        />
+        {playerNames.includes(userName) ? (
+          <FontAwesomeIcon
+            icon={faCircleXmark}
+            className="cancel-icon cancel-icon-big"
+            onClick={() => handleCancelAll()}
+          />
+        ) : (
+          <></>
+        )}
       </div>
     </div>
   );

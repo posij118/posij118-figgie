@@ -27,7 +27,7 @@ const registerMiddleware = transactionDecorator(async (client, req, res) => {
   res.send('Registration successful');
 });
 
-router.post("/register");
+router.post("/register", registerMiddleware);
 
 router.get("*", (req, res) => {
   let url = path.join(__dirname, "../view/build", "index.html");

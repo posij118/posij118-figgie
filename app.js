@@ -6,9 +6,13 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const WebSocket = require("ws");
-const { addNewGuestToGame, toggleReady } = require("./controller/pre-game");
+const { addNewGuestToGame, toggleReady, joinGame } = require("./controller/pre-game");
 const { v4: uuidv4 } = require("uuid");
-const { getWsIdsByGameId, getGameIdByWsId } = require("./model/pre-game");
+const {
+  getWsIdsByGameId,
+  getGameIdByWsId,
+  getGameIdOrWaitingGameIdByWsId,
+} = require("./model/pre-game");
 const router = require("./routes/routes");
 const { CLIENT, SOCKET_TYPES, TYPES } = require("./view/src/utils/constants");
 const {
@@ -19,7 +23,7 @@ const {
   leaveGame,
 } = require("./controller/game");
 const { endGame } = require("./controller/end-game");
-const { deleteSession } = require("./controller/session");
+const { deleteSession, loginUser, loginGuest } = require("./controller/session");
 const types = require("pg").types;
 
 const PORT = process.env.PORT || 8000;
@@ -58,25 +62,33 @@ wsServer.on("connection", (socket) => {
 
   socket.on("message", async (data) => {
     const { type, payload } = JSON.parse(data);
-    let response;
+    let response, wsId;
+
     switch (type) {
       case CLIENT.MESSAGE.NEW_GUEST:
-        const wsId = uuidv4();
+        wsId = uuidv4();
         wsServer.clients.forEach((client) => {
           if (client === socket) client.id = wsId;
         });
 
-        response = await addNewGuestToGame(
-          payload.userName,
-          payload.gameName,
-          wsId
-        );
+        response = await loginGuest(socket, payload.userName)
+        break;
+      case CLIENT.MESSAGE.USER_LOGIN:
+        wsId = uuidv4();
+        wsServer.clients.forEach((client) => {
+          if (client === socket) client.id = wsId;
+        });
+        await loginUser(socket, payload.userName, payload.password);
+        break;
+      case CLIENT.MESSAGE.JOIN_GAME:
+        const response = await joinGame(payload.gameName, socket);
         break;
       case CLIENT.MESSAGE.TOGGLE_READY:
         response = await toggleReady(socket);
         if (response.type === TYPES.GAME_CONFIG) {
           const gameId = await getGameIdByWsId(null, socket.id);
           setTimeout(async () => {
+            console.log("Game Ending.");
             const broadcastObject = await endGame(gameId);
             await broadcast(socket, broadcastObject);
           }, process.env.GAME_DURATION || 240000);
@@ -112,6 +124,10 @@ wsServer.on("connection", (socket) => {
 });
 
 const broadcast = async (socket, broadcastObject) => {
+  if (!broadcastObject) {
+    console.log('Empty broadcast object');
+    return;
+  }
   if (broadcastObject instanceof Array) {
     broadcastObject.forEach(async (object) => await broadcast(socket, object));
     return;
@@ -122,7 +138,7 @@ const broadcast = async (socket, broadcastObject) => {
       socket.send(JSON.stringify(broadcastObject));
       break;
     case SOCKET_TYPES.SAME_GAME:
-      const gameId = await getGameIdByWsId(null, socket.id);
+      const gameId = await getGameIdOrWaitingGameIdByWsId(null, socket.id);
       let wsIds = [];
       if (gameId) wsIds = await getWsIdsByGameId(null, gameId);
       wsServer.clients.forEach((client) => {

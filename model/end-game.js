@@ -32,16 +32,15 @@ const getUserIdsByGameId = async (client, gameId) => {
 };
 
 const updateChipsByUserId = async (client, userId, payoff) => {
-  const response = await client.query(
+  await client.query(
     `
 		UPDATE users SET
 		  chips=chips+$1
 		WHERE id=$2
-		RETURNING chips
 	`,
     [payoff, userId]
   );
-	return response.rows[0].chips;
+  return;
 };
 
 const restoreUsersToDefaultByGameId = async (client, gameId) => {
@@ -53,8 +52,9 @@ const restoreUsersToDefaultByGameId = async (client, gameId) => {
 				num_diamonds=0,
 				num_hearts=0,
 				ready=$2,
-				game_id=$3
-			WHERE game_id=$1
+				game_id=$3,
+        waiting_game_id=$3
+			WHERE game_id=$1 OR waiting_game_id=$1
 		`,
     [gameId, false, null]
   );
@@ -88,10 +88,11 @@ const updateGameIdByWsId = async (client, gameId, wsId) => {
   await client.query(
     `
 			UPDATE users SET
-				game_id=$1
-			WHERE ws_session_id=$2
+				game_id=$1,
+        waiting_game_id=$2
+			WHERE ws_session_id=$3
 		`,
-    [gameId, wsId]
+    [gameId, null, wsId]
   );
   return;
 };

@@ -7,6 +7,8 @@ import { Game } from "./features/game/game";
 import { PreGame } from "./features/pre-game/pre-game";
 import { Login } from "./features/login/login";
 import { LoggedOut } from "./features/logged-out/logged-out";
+import { Register } from "./features/game/register/register";
+import { RegistrationSuccessful } from "./features/game/register/registration-successful";
 
 function App() {
   const wsClient = useRef(null);
@@ -16,7 +18,7 @@ function App() {
   return (
     <div className="app">
       <Router>
-        <Header wsClient={wsClient } />
+        <Header wsClient={wsClient} userName={userName} />
         <Route path="/game/:gameId">
           <Game userName={userName} wsClient={wsClient} />
         </Route>
@@ -37,6 +39,12 @@ function App() {
             wsClient={wsClient}
           />}
         />
+        <Route path="/register">
+          <Register />
+        </Route>
+        <Route path="/registration-successful">
+          <RegistrationSuccessful />
+        </Route>
         <Route path='/logged-out'>
           <LoggedOut />
         </Route>

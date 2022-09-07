@@ -16,6 +16,11 @@ import {
   deleteAllOrders,
   endGame,
   deletePlayer,
+  updateWaitingPlayerName,
+  setGameExists,
+  updateStartingTimestamp,
+  updateGameDuration,
+  setOrders,
 } from "../../app/game/game-slice";
 
 export const Login = (props) => {
@@ -35,7 +40,7 @@ export const Login = (props) => {
       wsClient.current.close();
     }
 
-    let URL = window.location.href
+    const URL = window.location.href
       .replace(/^http/, "ws")
       .replace("3000", "8000");
     wsClient.current = new WebSocket(URL);
@@ -63,6 +68,8 @@ export const Login = (props) => {
           if (payload.ready) dispatch(updateReady(payload.ready));
           if (payload.chips)
             dispatch(updateCardsOrChips({ chips: payload.chips }));
+          if (payload.gameId) dispatch(setGameExists());
+
           if (payload.gameId) history.push(`/pre-game/${payload.gameId}`);
           dispatch(setGameToNotLoading());
           break;
@@ -85,10 +92,10 @@ export const Login = (props) => {
           dispatch(deleteOrdersByPlayerName(payload));
           break;
         case TYPES.ORDER_FILLED:
-          dispatch(updateCardsOrChips({ clubs: payload.clubs }));
-          dispatch(updateCardsOrChips({ spades: payload.spades }));
-          dispatch(updateCardsOrChips({ diamonds: payload.diamonds }));
-          dispatch(updateCardsOrChips({ hearts: payload.hearts }));
+          if (payload.clubs) dispatch(updateCardsOrChips({ clubs: payload.clubs }));
+          if (payload.spades) dispatch(updateCardsOrChips({ spades: payload.spades }));
+          if (payload.diamonds) dispatch(updateCardsOrChips({ diamonds: payload.diamonds }));
+          if (payload.hearts) dispatch(updateCardsOrChips({ hearts: payload.hearts }));
           dispatch(updateCardsOrChips({ chips: payload.chips }));
           dispatch(updateNumCards(payload.numCards));
           dispatch(deleteAllOrders());
@@ -98,12 +105,26 @@ export const Login = (props) => {
             endGame({
               chips: payload.chips,
               previousGoalSuit: payload.previousGoalSuit,
+              playerNames: payload.playerNames,
+              ready: payload.ready,
             })
           );
           history.push(`/pre-game/${String(payload.newGameId)}`);
           break;
         case TYPES.PLAYER_LEFT:
           dispatch(deletePlayer(payload));
+          break;
+        case TYPES.NEW_WAITING_PLAYER:
+          dispatch(updateCardsOrChips({ chips: payload.chips }));
+          dispatch(updateNumCards(payload.numCards));
+          dispatch(updateStartingTimestamp(payload.startingTimestamp));
+          dispatch(updateWaitingPlayerName(payload.waitingPlayerName));
+          dispatch(updateGameDuration(payload.gameDuration));
+          dispatch(updatePlayerNames(payload.playerNames));
+          dispatch(updateReady(payload.ready));
+          dispatch(setGameExists());
+          dispatch(setOrders(payload.orders))
+          history.push(`/game/${payload.gameId}`);
           break;
         default:
           console.log("No event listener yet", payload);

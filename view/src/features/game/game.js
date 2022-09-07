@@ -7,6 +7,7 @@ import {
   selectNumCards,
   selectOrders,
   selectPlayerNames,
+  selectWaitingPlayerName,
 } from "../../app/game/game-slice";
 import { moveIndexInFront } from "../../utils/helper-functions-view";
 import "./game.css";
@@ -20,10 +21,11 @@ export const Game = (props) => {
   const orders = useSelector(selectOrders);
   const gameExists = useSelector(selectGameExists);
   const cards = useSelector(selectCards);
+  const waitingPlayerName = useSelector(selectWaitingPlayerName);
 
   const { userName, wsClient } = props;
   const [playerNames, setPlayerNames] = useState([]);
-  const [playerIndex, setPlayerIndex] = useState(null);
+  const [playerIndex, setPlayerIndex] = useState(-1);
   const [numCards, setNumCards] = useState([]);
   const [chips, setChips] = useState([]);
   const [dataSet, setDataSet] = useState(false);
@@ -49,39 +51,46 @@ export const Game = (props) => {
     <p>Please wait. Data is loading.</p>
   ) : (
     <div className="game">
-      {playerNames.map((playerName, index) => (
-        <Player
-          orientation={String(
-            Math.round(270 + (360 * index) / playerNames.length) % 360
-          )}
-          cards={
-            index === 0
-              ? Object.entries(cards)
-                  .map(([suitName, suitCount]) =>
-                    Array(suitCount).fill(suitName)
-                  )
-                  .reduce((cardsSectionA, cardsSectionB) =>
-                    cardsSectionA.concat(cardsSectionB)
-                  )
-              : Array(numCards[index]).fill("hidden")
-          }
-          playerName={playerName}
-          chips={chips[index]}
-          cardsVisible={!index}
-          horVertOrientation={
-            index === 1 || index === playerNames.length - 1
-              ? "vertical"
-              : "horizontal"
-          }
-          key={playerName}
-        />
-      ))}
+      {playerNames.map((playerName, index) => {
+        return playerName ? (
+          <Player
+            orientation={String(
+              Math.round(270 + (360 * index) / playerNames.length) % 360
+            )}
+            cards={
+              playerNames[index] === userName
+                ? Object.entries(cards)
+                    .map(([suitName, suitCount]) =>
+                      Array(suitCount).fill(suitName)
+                    )
+                    .reduce((cardsSectionA, cardsSectionB) =>
+                      cardsSectionA.concat(cardsSectionB)
+                    )
+                : Array(numCards[index]).fill("hidden")
+            }
+            playerName={playerName}
+            chips={chips[index]}
+            cardsVisible={playerNames[index] === userName}
+            horVertOrientation={
+              index === 1 || index === playerNames.length - 1
+                ? "vertical"
+                : "horizontal"
+            }
+            key={playerName}
+          />
+        ) : (
+          <></>
+        );
+      })}
       <Table
         orders={orders}
         wsClient={wsClient}
         userName={userName}
         cards={cards}
       />
+      <div className="waiting-player-container">
+        {waitingPlayerName ? `Waiting player: ${waitingPlayerName}` : <></>}
+      </div>
     </div>
   );
 };

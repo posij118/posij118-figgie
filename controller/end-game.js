@@ -6,13 +6,23 @@ const {
   restoreUsersToDefaultByGameId,
   moveGameToArchiveByGameId,
   getGameNameByGameId,
-	updateGameIdByWsId,
+  updateGameIdByWsId,
 } = require("../model/end-game");
-const { lockGameId, deleteOrdersByGameId } = require("../model/game");
+const {
+  lockGameId,
+  deleteOrdersByGameId,
+  getUserNameByUserId,
+  getCardsChipsWsIdByGameId,
+} = require("../model/game");
 const { transactionDecorator } = require("../utils/transaction-decorator");
 const { SOCKET_TYPES, TYPES } = require("../view/src/utils/constants");
 const { zip } = require("../utils/helper-functions");
-const { createGame, getWsIdsByGameId, getGameIdByGameName } = require("../model/pre-game");
+const {
+  createGame,
+  getGameIdByGameName,
+  getWsIdsByGameId,
+  getReadyByGameId,
+} = require("../model/pre-game");
 
 const scoreGame = async (client, gameId) => {
   const goalSuit = await getGoalSuitByGameId(client, gameId);
@@ -29,39 +39,45 @@ const scoreGame = async (client, gameId) => {
     if (sumGoalSuit === 8) return 10 * numCards + 120 / countMaxGoalSuit;
     if (sumGoalSuit === 10) return 10 * numCards + 100 / countMaxGoalSuit;
   });
-  let chips = [];
 
   for (const [userId, payoff] of zip(userIds, payoffs)) {
-    const userChips = await updateChipsByUserId(client, userId, payoff);
-    chips.push(userChips);
+    await updateChipsByUserId(client, userId, payoff);
   }
-
-  return chips;
 };
 
 const endGame = async (client, gameId) => {
+  await lockGameId(client, gameId);
   const gameName = await getGameNameByGameId(client, gameId);
   const wsIds = await getWsIdsByGameId(client, gameId);
 
-  await lockGameId(client, gameId);
-  const chips = await scoreGame(client, gameId);
+  await scoreGame(client, gameId);
   const previousGoalSuit = await getGoalSuitByGameId(client, gameId);
   await deleteOrdersByGameId(client, gameId);
   await restoreUsersToDefaultByGameId(client, gameId);
   await moveGameToArchiveByGameId(client, gameId);
   await createGame(client, gameName, false);
   const newGameId = await getGameIdByGameName(client, gameName);
-	for (const wsId of wsIds) {
-		await updateGameIdByWsId(client, newGameId, wsId);
-	}
 
-	let payload = {};
+  for (const wsId of wsIds) {
+    await updateGameIdByWsId(client, newGameId, wsId);
+  }
+
+  const userIds = await getUserIdsByGameId(client, newGameId);
+  let playerNames = [];
+  for (const userId of userIds) {
+    playerNames.push(await getUserNameByUserId(client, userId));
+  }
+  const ready = await getReadyByGameId(client, newGameId);
+  const response = await getCardsChipsWsIdByGameId(client, newGameId);
+  const chips = response.map((row) => row.chips);
+
+  let payload = {};
 
   wsIds.forEach((wsId) => {
     payload[wsId] = {
       socketTypesToInform: SOCKET_TYPES.MAP_WS_ID_TO_PAYLOAD,
       type: TYPES.END_GAME,
-      payload: { chips, newGameId, previousGoalSuit },
+      payload: { chips, newGameId, previousGoalSuit, playerNames, ready },
     };
   });
 

@@ -7,8 +7,8 @@ import { Game } from "./features/game/game";
 import { PreGame } from "./features/pre-game/pre-game";
 import { Login } from "./features/login/login";
 import { LoggedOut } from "./features/logged-out/logged-out";
-import { Register } from "./features/game/register/register";
-import { RegistrationSuccessful } from "./features/game/register/registration-successful";
+import { Register } from "./features/register/register";
+import { RegistrationSuccessful } from "./features/register/registration-successful";
 
 function App() {
   const wsClient = useRef(null);

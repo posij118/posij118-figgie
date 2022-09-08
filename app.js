@@ -6,7 +6,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const WebSocket = require("ws");
-const { addNewGuestToGame, toggleReady, joinGame } = require("./controller/pre-game");
+const { toggleReady, joinGame } = require("./controller/pre-game");
 const { v4: uuidv4 } = require("uuid");
 const {
   getWsIdsByGameId,
@@ -23,7 +23,11 @@ const {
   leaveGame,
 } = require("./controller/game");
 const { endGame } = require("./controller/end-game");
-const { deleteSession, loginUser, loginGuest } = require("./controller/session");
+const {
+  deleteSession,
+  loginUser,
+  loginGuest,
+} = require("./controller/session");
 const types = require("pg").types;
 
 const PORT = process.env.PORT || 8000;
@@ -71,7 +75,7 @@ wsServer.on("connection", (socket) => {
           if (client === socket) client.id = wsId;
         });
 
-        response = await loginGuest(socket, payload.userName)
+        response = await loginGuest(socket, payload.userName);
         break;
       case CLIENT.MESSAGE.USER_LOGIN:
         wsId = uuidv4();
@@ -125,7 +129,7 @@ wsServer.on("connection", (socket) => {
 
 const broadcast = async (socket, broadcastObject) => {
   if (!broadcastObject) {
-    console.log('Empty broadcast object');
+    console.log("Empty broadcast object");
     return;
   }
   if (broadcastObject instanceof Array) {

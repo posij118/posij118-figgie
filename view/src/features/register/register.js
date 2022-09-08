@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useHistory } from "react-router";
+import { postUserNameAndPassword } from "../../api/api";
 
 export const Register = (props) => {
   const [userName, setUserName] = useState("");

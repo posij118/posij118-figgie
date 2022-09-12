@@ -97,6 +97,24 @@ const updateGameIdByWsId = async (client, gameId, wsId) => {
   return;
 };
 
+const deleteGameInfoByWsId = async (client, wsId) => {
+  await client.query(
+    `
+      UPDATE users SET
+        game_id=$1,
+        waiting_game_id=$2,
+        num_clubs=$3,
+        num_spades=$4,
+        num_diamonds=$5,
+        num_hearts=$6,
+        ready=$7,
+        chips=$8
+      WHERE ws_session_id=$9
+    `, [...Array(8).map((elem) => null), wsId]
+  );
+  return;
+};
+
 module.exports.getGoalSuitByGameId = getGoalSuitByGameId;
 module.exports.getNumCardsBySuitGameId = getNumCardsBySuitGameId;
 module.exports.getUserIdsByGameId = getUserIdsByGameId;
@@ -105,5 +123,6 @@ module.exports.restoreUsersToDefaultByGameId = restoreUsersToDefaultByGameId;
 module.exports.moveGameToArchiveByGameId = moveGameToArchiveByGameId;
 module.exports.getGameNameByGameId = getGameNameByGameId;
 module.exports.updateGameIdByWsId = updateGameIdByWsId;
+module.exports.deleteGameInfoByWsId = deleteGameInfoByWsId;
 
 module.exports = initializeAndReleaseClientDecorator(module.exports);

@@ -1,0 +1,45 @@
+.lobby {
+    text-align: center;
+}
+
+.games-container {
+    margin: 2rem 10% 0 10%;
+    border: 0px;
+    width: 80%; 
+}
+
+.games-container thead tr, .games-container tbody tr {
+    width: 100%;
+}
+
+.name-column-entry {
+    width: 30%;
+}
+
+.players-column-entry {
+    width: 40%;
+}
+
+.rated-column-entry {
+    width: 30%;
+}
+
+.games-container thead tr td, .games-container tbody tr td {
+    padding: 1rem;
+}
+
+.color-green {
+    background-color: lightgreen;
+}
+
+.color-yellow {
+    background-color: yellow;
+}
+
+.color-green, .color-yellow {
+    cursor: pointer;
+}
+
+.color-red {
+    background-color: crimson;
+}

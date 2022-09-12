@@ -6,7 +6,8 @@ CREATE TABLE games (
   started_at timestamp,
   goal_suit suit_type,
   name varchar(50) NOT NULL UNIQUE,
-  is_rated bool NOT NULL
+  is_rated bool NOT NULL,
+  is_private bool NOT NULL
 );
 
 CREATE TABLE users (

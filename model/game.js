@@ -47,7 +47,7 @@ const getUserIdByWsId = async (client, wsId) => {
     `SELECT id FROM users WHERE ws_session_id=$1`,
     [wsId]
   );
-  
+
   if (!response.rows.length) return null;
   return response.rows[0].id;
 };
@@ -179,6 +179,7 @@ const getCardsChipsWsIdByGameId = async (client, gameId) => {
 };
 
 const lockGameId = async (client, gameId) => {
+  await client.query(`SELECT * FROM games WHERE id=$1 FOR UPDATE`, [gameId]);
   await client.query(`SELECT * FROM users WHERE game_id=$1 FOR UPDATE`, [
     gameId,
   ]);
@@ -198,7 +199,8 @@ const getStartingTimestampByGameId = async (client, gameId) => {
 };
 
 const getOrdersByGameId = async (client, gameId) => {
-  const response = await client.query(`
+  const response = await client.query(
+    `
   SELECT 
     orders.id,
     orders.price,
@@ -210,9 +212,9 @@ const getOrdersByGameId = async (client, gameId) => {
    orders INNER JOIN users ON
    orders.poster = users.id
    WHERE orders.game_id=$1
-  `, [
-    gameId,
-  ]);
+  `,
+    [gameId]
+  );
 
   const orders = ORDERS_EMPTY;
   response.rows.forEach((row) => {

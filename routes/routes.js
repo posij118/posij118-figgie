@@ -24,10 +24,10 @@ const registerMiddleware = transactionDecorator(async (client, req, res) => {
 
   const hashedPassword = await bcrypt.hash(password, 10);
   await registerUser(client, userName, hashedPassword);
-  res.send('Registration successful');
+  res.status(200).send('Registration successful');
 });
 
-router.post("/register", registerMiddleware);
+router.post("/register", async (req, res) => await registerMiddleware(req, res));
 
 router.get("*", (req, res) => {
   let url = path.join(__dirname, "../view/build", "index.html");

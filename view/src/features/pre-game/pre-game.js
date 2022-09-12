@@ -16,14 +16,20 @@ import {
   moveIndexInFront,
   zipThree,
 } from "../../utils/helper-functions-view";
+import {
+  selectGameName,
+  selectUserName,
+} from "../../app/session/session.slice";
 
 export const PreGame = (props) => {
-  const { wsClient, userName, gameName } = props;
+  const { wsClient } = props;
   const playerNamesGlobal = useSelector(selectPlayerNames);
   const readyGlobal = useSelector(selectReady);
   const chipsGlobal = useSelector(selectChips);
   const previousGoalSuit = useSelector(selectPreviousGoalSuit);
   const isLoading = useSelector(selectGameIsLoading);
+  const userName = useSelector(selectUserName);
+  const gameName = useSelector(selectGameName);
 
   const [ready, setReady] = useState([]);
   const [playerNames, setPlayerNames] = useState([]);

@@ -11,10 +11,10 @@ const getIsRegisteredByUserId = async (client, userId) => {
   return response.rows[0].is_registered;
 };
 
-const deleteWsIdGameIdByUserId = async (client, userId) => {
+const deleteWsIdByUserId = async (client, userId) => {
   await client.query(
-    `UPDATE users SET ws_session_id=$1, game_id=$2 WHERE id=$3`,
-    [null, null, userId]
+    `UPDATE users SET ws_session_id=$1 WHERE id=$2`,
+    [null, userId]
   );
   return;
 };
@@ -79,8 +79,18 @@ const registerGuest = async (client, wsId, userName) => {
   return;
 };
 
+const getWaitingPlayerNameByGameId = async (client, gameId) => {
+  const response = await client.query(
+    `SELECT username FROM users WHERE waiting_game_id=$1`,
+    [gameId]
+  );
+
+  if (!response.rows.length) return null;
+  return response.rows[0].username;
+};
+
 module.exports.getIsRegisteredByUserId = getIsRegisteredByUserId;
-module.exports.deleteWsIdGameIdByUserId = deleteWsIdGameIdByUserId;
+module.exports.deleteWsIdByUserId = deleteWsIdByUserId;
 module.exports.deleteUserByUserId = deleteUserByUserId;
 module.exports.deleteGameByGameId = deleteGameByGameId;
 module.exports.deleteUsersByGameId = deleteUsersByGameId;
@@ -89,5 +99,6 @@ module.exports.registerUser = registerUser;
 module.exports.getHashedPasswordByUserName = getHashedPasswordByUserName;
 module.exports.updateWsIdByUserName = updateWsIdByUserName;
 module.exports.registerGuest = registerGuest;
+module.exports.getWaitingPlayerNameByGameId = getWaitingPlayerNameByGameId;
 
 module.exports = initializeAndReleaseClientDecorator(module.exports);

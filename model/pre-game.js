@@ -18,17 +18,17 @@ const checkIfUserExists = async (client, userName) => {
   return Boolean(response.rows.length);
 };
 
-const createGame = async (client, gameName, isRated) => {
-  await client.query("INSERT INTO games (name, is_rated) VALUES ($1, $2)", [
-    gameName,
-    isRated,
-  ]);
+const insertNewGame = async (client, gameName, isRated, isPrivate) => {
+  await client.query(
+    "INSERT INTO games (name, is_rated, is_private) VALUES ($1, $2, $3)",
+    [gameName, isRated, isPrivate]
+  );
 };
 
 const getPreGameInfoByName = async (client, gameName) => {
   const response = await client.query(
     `
-	SELECT games.id, users.username, users.ready, users.chips
+	SELECT users.username, users.id, users.ready, users.chips
 		FROM games INNER JOIN users
 			ON games.id = users.game_id
 		WHERE games.name = $1
@@ -123,6 +123,7 @@ const getGameIdByGameName = async (client, gameName) => {
     gameName,
   ]);
 
+  if (!response.rows.length) return null;
   return response.rows[0].id;
 };
 
@@ -144,9 +145,24 @@ const checkIfGameStartedByGameId = async (client, gameId) => {
   return Boolean(response.rows[0].started_at);
 };
 
+const getIsPrivateIsRatedByGameName = async (client, gameName) => {
+  const response = await client.query(
+    `SELECT is_private, is_rated FROM games WHERE name=$1`,
+    [gameName]
+  );
+
+  if (!response.rows.length) return null;
+  return response.rows[0];
+};
+
+const lockGameName = async (client, gameName) => {
+  await client.query(`SELECT * FROM games WHERE name=$1 FOR UPDATE`, [gameName]);
+  return;
+}
+
 module.exports.checkIfGameExists = checkIfGameExists;
 module.exports.checkIfUserExists = checkIfUserExists;
-module.exports.createGame = createGame;
+module.exports.insertNewGame = insertNewGame;
 module.exports.getPreGameInfoByName = getPreGameInfoByName;
 module.exports.updateUserToJoinGame = updateUserToJoinGame;
 module.exports.getWsIdsByGameId = getWsIdsByGameId;
@@ -158,5 +174,7 @@ module.exports.getNumberOfPlayingAndWatingPlayersByGameId =
   getNumberOfPlayingAndWatingPlayersByGameId;
 module.exports.checkIfGameStartedByGameId = checkIfGameStartedByGameId;
 module.exports.getGameIdOrWaitingGameIdByWsId = getGameIdOrWaitingGameIdByWsId;
+module.exports.getIsPrivateIsRatedByGameName = getIsPrivateIsRatedByGameName;
+module.exports.lockGameName = lockGameName;
 
 module.exports = initializeAndReleaseClientDecorator(module.exports);

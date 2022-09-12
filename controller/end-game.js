@@ -18,10 +18,11 @@ const { transactionDecorator } = require("../utils/transaction-decorator");
 const { SOCKET_TYPES, TYPES } = require("../view/src/utils/constants");
 const { zip } = require("../utils/helper-functions");
 const {
-  createGame,
   getGameIdByGameName,
   getWsIdsByGameId,
   getReadyByGameId,
+  getIsPrivateIsRatedByGameName,
+  insertNewGame,
 } = require("../model/pre-game");
 
 const scoreGame = async (client, gameId) => {
@@ -48,6 +49,10 @@ const scoreGame = async (client, gameId) => {
 const endGame = async (client, gameId) => {
   await lockGameId(client, gameId);
   const gameName = await getGameNameByGameId(client, gameId);
+  const { isPrivate, isRated } = await getIsPrivateIsRatedByGameName(
+    client,
+    gameName
+  );
   const wsIds = await getWsIdsByGameId(client, gameId);
 
   await scoreGame(client, gameId);
@@ -55,7 +60,7 @@ const endGame = async (client, gameId) => {
   await deleteOrdersByGameId(client, gameId);
   await restoreUsersToDefaultByGameId(client, gameId);
   await moveGameToArchiveByGameId(client, gameId);
-  await createGame(client, gameName, false);
+  await insertNewGame(client, gameName, isRated, isPrivate);
   const newGameId = await getGameIdByGameName(client, gameName);
 
   for (const wsId of wsIds) {
@@ -72,6 +77,9 @@ const endGame = async (client, gameId) => {
   const chips = response.map((row) => row.chips);
 
   let payload = {};
+  payload.gameId = gameId;
+  payload.newGameId = newGameId;
+  payload.playerNames = playerNames;
 
   wsIds.forEach((wsId) => {
     payload[wsId] = {

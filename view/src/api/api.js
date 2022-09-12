@@ -1,9 +1,25 @@
-export const postUserNameAndPassword = async (userName, password, setError, history) => {
-  const API_ENDPOINT = window.location.href.replace("3000", "8000");
-  fetch(API_ENDPOINT, { method: "POST", body: { userName, password } })
-    .then((response) => {
-			if (response.status === 400) setError(response.body);
-			else history.push("/registration-successful");
-		})
-    .catch((err) => setError(err));
+const API_ENDPOINT = "http://" + window.location.host.replace("3000", "8000");
+
+export const postUserNameAndPassword = (
+  userName,
+  password,
+  setError,
+  history
+) => {
+  fetch(`${API_ENDPOINT}/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json;charset=utf-8",
+    },
+    body: JSON.stringify({ userName, password }),
+  })
+    .then(async (response) => {
+      if (response.status === 400) {
+        const result = await response.text();
+        setError(result);
+      } else {
+        history.push("/registration-successful");
+      }
+    })
+    .catch((err) => setError(err.message + err.stack));
 };

@@ -15,6 +15,7 @@ const {
   getGameIdByWsId,
   getWsIdsByGameId,
   getGameIdOrWaitingGameIdByWsId,
+  checkIfGameStartedByGameId,
 } = require("../model/pre-game");
 const {
   getSuitNameFromSuitTypeIndentifier,
@@ -24,7 +25,8 @@ const {
 const { transactionDecorator } = require("../utils/transaction-decorator");
 const { SOCKET_TYPES, TYPES } = require("../view/src/utils/constants");
 const { capitalize } = require("../utils/helper-functions");
-const { updateGameIdByWsId } = require("../model/end-game");
+const { deleteGameInfoByWsId } = require("../model/end-game");
+const { getWaitingPlayerNameByGameId, getIsRegisteredByUserId } = require("../model/session");
 
 const postOrders = async (client, socket, orders) => {
   const gameId = await getGameIdByWsId(client, socket.id);
@@ -224,16 +226,32 @@ const fillOrder = async (client, socket, suitTypeIdentifier, orderId) => {
   }
 };
 
-const leaveGame = async (client, socket) => {
+const leaveGame = async (client, socket, broadcast) => {
   const userId = await getUserIdByWsId(client, socket.id);
   const userName = await getUserNameByUserId(client, userId);
   const gameId = await getGameIdOrWaitingGameIdByWsId(client, socket.id);
   await lockGameId(client, gameId);
-
-  await updateGameIdByWsId(client, null, socket.id);
   const wsIds = await getWsIdsByGameId(client, gameId);
+  const gameStarted = await checkIfGameStartedByGameId(client, gameId);
+  const waitingPlayerName = await getWaitingPlayerNameByGameId(client, gameId);
+  const isRegistered = await getIsRegisteredByUserId(client, userId);
 
-  return {
+  if (gameStarted && waitingPlayerName !== userName && isRegistered)
+    return {
+      socketTypesToInform: SOCKET_TYPES.ITSELF,
+      type: TYPES.ERROR,
+      payload: { message: "Registered users can't leave a running game.", stack: "" },
+    };
+
+  await deleteGameInfoByWsId(client, socket.id);
+
+  await broadcast(socket, {
+    socketTypesToInform: SOCKET_TYPES.ALL,
+    type: TYPES.ANNOUNCE_PLAYER_LEFT,
+    payload: { gameId, playerName: userName},
+  });
+
+  const broadcastObject = {
     type: TYPES.PLAYER_LEFT,
     socketTypesToInform: SOCKET_TYPES.MAP_WS_ID_TO_PAYLOAD,
     payload: Object.fromEntries(
@@ -247,6 +265,10 @@ const leaveGame = async (client, socket) => {
       ])
     ),
   };
+
+  broadcastObject.gameId = gameId;
+  broadcastObject.playerName = userName;
+  return broadcastObject;
 };
 
 module.exports.postOrders = transactionDecorator(postOrders);

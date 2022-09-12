@@ -11,6 +11,8 @@ export const Register = (props) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     postUserNameAndPassword(userName, password, setError, history);
+    setUserName("");
+    setPassword("");
   };
 
   return (
@@ -35,6 +37,7 @@ export const Register = (props) => {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+        <input type="submit" value="Register"/>
       </form>
     </div>
   );

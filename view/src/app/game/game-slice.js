@@ -3,35 +3,36 @@ const { capitalize } = require("../../utils/helper-functions-view");
 
 const INFINITY = 10000000000;
 
+const initialState = {
+  playerNames: [],
+  clubs: 0,
+  spades: 0,
+  diamonds: 0,
+  hearts: 0,
+  chips: [],
+  numCards: [],
+  ready: [],
+  orders: {
+    bidsClubs: [],
+    bidsSpades: [],
+    bidsDiamonds: [],
+    bidsHearts: [],
+    offersClubs: [],
+    offersSpades: [],
+    offersDiamonds: [],
+    offersHearts: [],
+  },
+  gameExists: false,
+  gameIsLoading: false,
+  startingTimestamp: null,
+  gameDuration: null,
+  previousGoalSuit: null,
+  waitingPlayerName: null,
+};
+
 const gameReducerObject = createSlice({
   name: "gameReducer",
-  initialState: {
-    playerNames: [],
-    clubs: 0,
-    spades: 0,
-    diamonds: 0,
-    hearts: 0,
-    chips: [],
-    numCards: [],
-    ready: [],
-    orders: {
-      bidsClubs: [],
-      bidsSpades: [],
-      bidsDiamonds: [],
-      bidsHearts: [],
-      offersClubs: [],
-      offersSpades: [],
-      offersDiamonds: [],
-      offersHearts: [],
-    },
-    gameExists: false,
-    gameIsLoading: false,
-    startingTimestamp: null,
-    gameDuration: null,
-    previousGoalSuit: null,
-    waitingPlayerName: null,
-  },
-
+  initialState,
   reducers: {
     initializeGame: (state, action) => {
       const gameConfig = action.payload;
@@ -222,6 +223,8 @@ const gameReducerObject = createSlice({
     setOrders: (state, action) => {
       state.orders = action.payload;
     },
+
+    reset: () => initialState,
   },
 });
 
@@ -248,6 +251,7 @@ export const updateStartingTimestamp =
   gameReducerObject.actions.updateStartingTimestamp;
 export const updateGameDuration = gameReducerObject.actions.updateGameDuration;
 export const setOrders = gameReducerObject.actions.setOrders;
+export const gameReset = gameReducerObject.actions.reset;
 
 export const selectCards = (state) => {
   return {

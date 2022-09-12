@@ -9,6 +9,7 @@ import {
   selectPlayerNames,
   selectWaitingPlayerName,
 } from "../../app/game/game-slice";
+import { selectUserName } from "../../app/session/session.slice";
 import { moveIndexInFront } from "../../utils/helper-functions-view";
 import "./game.css";
 import { Player } from "./player/player";
@@ -22,8 +23,9 @@ export const Game = (props) => {
   const gameExists = useSelector(selectGameExists);
   const cards = useSelector(selectCards);
   const waitingPlayerName = useSelector(selectWaitingPlayerName);
+  const userName = useSelector(selectUserName);
 
-  const { userName, wsClient } = props;
+  const { wsClient } = props;
   const [playerNames, setPlayerNames] = useState([]);
   const [playerIndex, setPlayerIndex] = useState(-1);
   const [numCards, setNumCards] = useState([]);

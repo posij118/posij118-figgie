@@ -1,7 +1,6 @@
 const {
-  checkIfGameExists,
   getPreGameInfoByName,
-  createGame,
+  insertNewGame,
   updateUserToJoinGame,
   getGameIdByWsId,
   getReadyByGameId,
@@ -9,54 +8,80 @@ const {
   getGameIdByGameName,
   getNumberOfPlayingAndWatingPlayersByGameId,
   checkIfGameStartedByGameId,
+  getIsPrivateIsRatedByGameName,
+  lockGameName,
+  getWsIdsByGameId,
 } = require("../model/pre-game");
-const { SOCKET_TYPES, TYPES } = require("../view/src/utils/constants");
+const { SOCKET_TYPES, TYPES, SERVER } = require("../view/src/utils/constants");
 const { startGame } = require("./start-game");
 const { transactionDecorator } = require("../utils/transaction-decorator");
 const { deleteInactiveGame } = require("./session");
 const {
-  lockGameId,
   getCardsChipsWsIdByGameId,
   getStartingTimestampByGameId,
   getOrdersByGameId,
   getUserIdByWsId,
   getUserNameByUserId,
 } = require("../model/game");
+const {
+  getIsRegisteredByUserId,
+  getWaitingPlayerNameByGameId,
+} = require("../model/session");
 const dotenv = require("dotenv").config();
 
-const joinGame = async (client, gameName, socket) => {
-  if (gameName.length > 50 || !gameName.length) {
+const joinOrCreateGame = async (
+  client,
+  gameName,
+  socket,
+  isRated,
+  isPrivate,
+  actionType
+) => {
+  const userId = await getUserIdByWsId(client, socket.id);
+  if (!userId) {
+    setTimeout(socket ? socket.close() : {}, 1000);
     return {
       socketTypesToInform: SOCKET_TYPES.ITSELF,
-      type: TYPES.ERROR,
-      payload: "Game name too long",
+      type: TYPES.CLOSING_MESSAGE,
+      payload: { reason: SERVER.MESSAGE.SESSION_NOT_FOUND },
     };
   }
 
-  const userId = await getUserIdByWsId(client, wsId);
-  if (!userId) {
-    socket.close();
-    return;
+  const isRegistered = await getIsRegisteredByUserId(client, userId);
+  if (!isRegistered && isRated) {
+    return {
+      socketTypesToInform: SOCKET_TYPES.ITSELF,
+      type: TYPES.ERROR,
+      payload: { message: "Guests cannot join rated games.", stack: "" },
+    };
   }
-  const userName = await getUserNameByUserId(client, userId);
 
-  const gameExists = await checkIfGameExists(client, gameName);
+  const userName = await getUserNameByUserId(client, userId);
+  const gameExists = Boolean(actionType !== "CREATE");
   if (!gameExists) {
-    await createGame(client, gameName, false);
+    await insertNewGame(client, gameName, isRated, isPrivate);
     setTimeout(() => {
       deleteInactiveGame(gameId);
     }, process.env.GAME_TIMEOUT || 1.2 * 1000 * 60 * 60 * 24);
   }
 
   const gameId = await getGameIdByGameName(client, gameName);
-  await lockGameId(client, gameId);
   const response = await getPreGameInfoByName(client, gameName);
+  let playerNames = response.map((row) => row.username);
+  let ready = response.map((row) => row.ready);
+  let chips = response.map((row) => row.chips);
+  const userIds = response.map((row) => row.id);
+  const indexToInsert = userIds.filter(
+    (inGameUserId) => inGameUserId < userId
+  ).length;
+
+  const INITIAL_CHIPS = 350;
   const numPlayers = await getNumberOfPlayingAndWatingPlayersByGameId(
     client,
     gameId
   );
 
-  if (numPlayers >= 5) {
+  if (numPlayers >= 5 && actionType !== "REJOIN") {
     return {
       socketTypesToInform: SOCKET_TYPES.ITSELF,
       type: TYPES.ERROR,
@@ -64,26 +89,32 @@ const joinGame = async (client, gameName, socket) => {
     };
   }
 
-  const INITIAL_CHIPS = 350;
-  const playerNames = [...response.map((row) => row.username), userName];
-  const ready = [...response.map((row) => row.ready), false];
-  const chips = [...response.map((row) => row.chips), INITIAL_CHIPS];
+  if (actionType !== "REJOIN") {
+    playerNames.splice(indexToInsert, 0, userName);
+    ready.splice(indexToInsert, 0, false);
+    chips.splice(indexToInsert, 0, INITIAL_CHIPS);
+  }
+
   let gameStarted = false;
-  if (numPlayers === 4)
+  if (numPlayers >= 4)
     gameStarted = await checkIfGameStartedByGameId(client, gameId);
 
-  await updateUserToJoinGame(
-    client,
-    userId,
-    gameId,
-    INITIAL_CHIPS,
-    gameStarted
-  );
+  if (actionType !== "REJOIN")
+    await updateUserToJoinGame(
+      client,
+      userId,
+      gameId,
+      INITIAL_CHIPS,
+      gameStarted
+    );
 
   if (gameStarted) {
-    waitingPlayerName = userName;
-    const response = await getCardsChipsWsIdByGameId(client, gameId);
-    const numCards = response.map(
+    const waitingPlayerName = await getWaitingPlayerNameByGameId(
+      client,
+      gameId
+    );
+    const cardsChipsWsIds = await getCardsChipsWsIdByGameId(client, gameId);
+    const numCards = cardsChipsWsIds.map(
       (row) =>
         row.num_clubs + row.num_spades + row.num_diamonds + row.num_hearts
     );
@@ -95,7 +126,7 @@ const joinGame = async (client, gameName, socket) => {
 
     return {
       socketTypesToInform: SOCKET_TYPES.SAME_GAME,
-      type: TYPES.NEW_WAITING_PLAYER,
+      type: TYPES.JOIN_EXISTING_GAME,
       payload: {
         chips: chips.slice(0, 4),
         numCards,
@@ -107,20 +138,27 @@ const joinGame = async (client, gameName, socket) => {
         startingTimestamp,
         userName,
         orders,
+        actionType,
       },
     };
   }
 
-  return {
+  const broadcastObject = {
     socketTypesToInform: SOCKET_TYPES.SAME_GAME,
     type: TYPES.PRE_GAME_CONFIG,
     payload: {
       gameId,
+      gameName,
       playerNames,
+      isRated,
       ready,
       chips,
+      userName,
     },
   };
+
+  if (!gameExists) broadcastObject.socketTypesToInform = SOCKET_TYPES.ALL;
+  return broadcastObject;
 };
 
 const toggleReady = async (client, socket) => {
@@ -146,5 +184,99 @@ const toggleReady = async (client, socket) => {
   };
 };
 
+const joinGame = async (client, gameName, socket) => {
+  await lockGameName(client, gameName);
+  console.log(gameName, socket.id);
+  const response = await getIsPrivateIsRatedByGameName(client, gameName);
+  if (!response)
+    return {
+      socketTypesToInform: SOCKET_TYPES.ITSELF,
+      type: TYPES.ERROR,
+      payload: { message: "The game does not exist", stack: "" },
+    };
+
+  const actionType = "JOIN";
+  return await joinOrCreateGame(
+    client,
+    gameName,
+    socket,
+    response.is_rated,
+    response.is_private,
+    actionType
+  );
+};
+
+const createGame = async (client, gameName, socket, isRated, isPrivate) => {
+  await lockGameName(client, gameName);
+  const gameId = await getGameIdByGameName(client, gameName);
+  if (gameId)
+    return {
+      socketTypesToInform: SOCKET_TYPES.ITSELF,
+      type: TYPES.ERROR,
+      payload: { message: "The game already exists.", stack: "" },
+    };
+
+  if (gameName.length > 50 || !gameName.length) {
+    return {
+      socketTypesToInform: SOCKET_TYPES.ITSELF,
+      type: TYPES.ERROR,
+      payload: { message: "Game name too long", stack: "" },
+    };
+  }
+
+  if (isPrivate && isRated) {
+    return {
+      socketTypesToInform: SOCKET_TYPES.ITSELF,
+      type: TYPES.ERROR,
+      payload: {
+        message: "A game cannot be both private and rated.",
+        stack: "",
+      },
+    };
+  }
+
+  const actionType = "CREATE";
+  return await joinOrCreateGame(
+    client,
+    gameName,
+    socket,
+    isRated,
+    isPrivate,
+    actionType
+  );
+};
+
+const rejoinGame = async (client, gameName, socket) => {
+  await lockGameName(client, gameName);
+  const gameId = await getGameIdByGameName(client, gameName);
+  if (!gameId)
+    return {
+      socketTypesToInform: SOCKET_TYPES.ITSELF,
+      type: TYPES.ERROR,
+      payload: { message: "The game does not exist.", stack: "" },
+    };
+
+  const wsIds = await getWsIdsByGameId(client, gameId);
+  if (!wsIds.includes(socket.id))
+    return {
+      socketTypesToInform: SOCKET_TYPES.ITSELF,
+      type: TYPES.ERROR,
+      payload: { message: "The player is not in the game", stack: "" },
+    };
+
+  const response = await getIsPrivateIsRatedByGameName(client, gameName);
+  const actionType = "REJOIN";
+  return await joinOrCreateGame(
+    client,
+    gameName,
+    socket,
+    response.is_rated,
+    response.is_private,
+    actionType
+  );
+};
+
 module.exports.joinGame = transactionDecorator(joinGame);
+module.exports.createGame = transactionDecorator(createGame);
 module.exports.toggleReady = transactionDecorator(toggleReady);
+module.exports.rejoinGame = transactionDecorator(rejoinGame);

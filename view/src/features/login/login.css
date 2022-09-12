@@ -1,0 +1,16 @@
+.login-container {
+    margin: 0 20%;
+    text-align: center;
+}
+
+label {
+    padding: 1rem;
+    line-height: 1.8rem;
+}
+
+.wrong-password-text {
+    color: red;
+    font-weight: 600;
+    width: 100%;
+    line-height: 1.8rem;
+}

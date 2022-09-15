@@ -12,10 +12,10 @@ const getIsRegisteredByUserId = async (client, userId) => {
 };
 
 const deleteWsIdByUserId = async (client, userId) => {
-  await client.query(
-    `UPDATE users SET ws_session_id=$1 WHERE id=$2`,
-    [null, userId]
-  );
+  await client.query(`UPDATE users SET ws_session_id=$1 WHERE id=$2`, [
+    null,
+    userId,
+  ]);
   return;
 };
 
@@ -89,6 +89,27 @@ const getWaitingPlayerNameByGameId = async (client, gameId) => {
   return response.rows[0].username;
 };
 
+const getCardsByUserId = async (client, userId) => {
+  const response = await client.query(
+    `SELECT num_clubs, num_spades, num_diamonds, num_hearts FROM users WHERE id=$1`,
+    [userId]
+  );
+
+  if (!response.rows.length)
+    return {
+      clubs: null,
+      spades: null,
+      diamonds: null,
+      hearts: null,
+    };
+  return {
+    clubs: response.rows[0].num_clubs,
+    spades: response.rows[0].num_spades,
+    diamonds: response.rows[0].num_diamonds,
+    hearts: response.rows[0].num_hearts,
+  };
+};
+
 module.exports.getIsRegisteredByUserId = getIsRegisteredByUserId;
 module.exports.deleteWsIdByUserId = deleteWsIdByUserId;
 module.exports.deleteUserByUserId = deleteUserByUserId;
@@ -100,5 +121,6 @@ module.exports.getHashedPasswordByUserName = getHashedPasswordByUserName;
 module.exports.updateWsIdByUserName = updateWsIdByUserName;
 module.exports.registerGuest = registerGuest;
 module.exports.getWaitingPlayerNameByGameId = getWaitingPlayerNameByGameId;
+module.exports.getCardsByUserId = getCardsByUserId;
 
 module.exports = initializeAndReleaseClientDecorator(module.exports);

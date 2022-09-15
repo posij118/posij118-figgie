@@ -10,8 +10,20 @@ export const Lobby = (props) => {
   const games = useSelector(selectGames);
   const userName = useSelector(selectUserName);
 
-  const handleJoinGame = (e) => {
-    const gameName = e.target.parentElement.id.slice(18);
+  const handleRowClick = (e, game) => {
+    let focusedElem = e.target;
+    while (focusedElem.tagName !== "TR")
+      focusedElem = focusedElem.parentElement;
+    const gameName = focusedElem.id.slice(18);
+
+    return game.players.includes(userName)
+      ? handleRejoinGame(gameName)
+      : (game.hasStarted && game.waitingPlayer) || game.players.length === 5
+      ? {}
+      : handleJoinGame(gameName);
+  };
+
+  const handleJoinGame = (gameName) => {
     wsClient.current.send(
       JSON.stringify({
         type: CLIENT.MESSAGE.JOIN_GAME,
@@ -20,8 +32,7 @@ export const Lobby = (props) => {
     );
   };
 
-  const handleRejoinGame = (e) => {
-    const gameName = e.target.parentElement.id.slice(18);
+  const handleRejoinGame = (gameName) => {
     wsClient.current.send(
       JSON.stringify({
         type: CLIENT.MESSAGE.REJOIN_GAME,
@@ -56,21 +67,20 @@ export const Lobby = (props) => {
                 key={game.name}
                 id={`injection-padding-${game.name}`}
                 className={`color-${
-                  game.hasStarted &&
-                  (game.waitingPlayer || game.players.length === 5)
+                  game.players.includes(userName)
+                    ? "green"
+                    : (game.hasStarted && game.waitingPlayer) ||
+                      game.players.length === 5
                     ? "red"
                     : game.hasStarted
                     ? "yellow"
                     : "green"
                 }`}
-                onClick={
-                  game.hasStarted &&
-                  (game.waitingPlayer || game.players.length === 5)
-                    ? {}
-                    : game.players.includes(userName)
-                    ? handleRejoinGame
-                    : handleJoinGame
+                onClick={(e) => handleRowClick(e, game)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" ? handleRowClick(e, game) : {}
                 }
+                tabIndex="0"
               >
                 <td className="name-column-entry">{game.name}</td>
                 <td className="players-column-entry">
@@ -88,9 +98,22 @@ export const Lobby = (props) => {
                       </React.Fragment>
                     );
                   })}
-                  {game.waitingPlayer ? `, ${game.waitingPlayer}` : <></>}
+                  {game.waitingPlayer ? (
+                    <>
+                      <span className="prefix-comma">, </span>
+                      <span
+                        className={`waiting-player-name ${
+                          game.waitingPlayer === userName ? "is-user" : ""
+                        }`}
+                      >
+                        {game.waitingPlayer}
+                      </span>
+                    </>
+                  ) : (
+                    <></>
+                  )}
                 </td>
-                <td className="rated-column-entry">{game.isRated}</td>
+                <td className="rated-column-entry">{String(game.isRated)}</td>
               </tr>
             );
           })}

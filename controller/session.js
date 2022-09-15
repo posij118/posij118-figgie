@@ -12,22 +12,37 @@ const {
 } = require("../model/session");
 const { transactionDecorator } = require("../utils/transaction-decorator");
 const bcrypt = require("bcrypt");
-const { checkIfUserExists } = require("../model/pre-game");
+const { checkIfUserExists, getGameIdByWsId, checkIfGameStartedByGameId } = require("../model/pre-game");
 const { SOCKET_TYPES, TYPES, SERVER } = require("../view/src/utils/constants");
-const { leaveGame } = require("./game");
+const { leaveGameUndecorated } = require("./game");
 
 const deleteSession = async (client, socket, broadcast) => {
   const userId = await getUserIdByWsId(client, socket.id);
   const isRegistered = await getIsRegisteredByUserId(client, userId);
+  const gameId = await getGameIdByWsId(client, socket.id);
+  let gameStarted = false;
+  if (gameId) gameStarted = await checkIfGameStartedByGameId(client, gameId);
 
-  if (isRegistered) {
-     await deleteWsIdByUserId(client, userId);
-  }
-  else{
+  if (isRegistered && !gameStarted) {
     await deleteOrdersByUserId(client, userId);
-    await leaveGame(client, socket, broadcast);
+    await leaveGameUndecorated(client, socket, broadcast);
+    await deleteWsIdByUserId(client, userId);
+  } else if (!gameStarted) {
+    await deleteOrdersByUserId(client, userId);
+    await leaveGameUndecorated(client, socket, broadcast);
     await deleteUserByUserId(client, userId);
+  } else {
+    return {
+      socketTypesToInform: SOCKET_TYPES.ITSELF,
+      type: TYPES.ERROR,
+      payload: {
+        message: "Users can't log out while they are in a running game.",
+        stack: "",
+      },
+    };
   }
+
+  return;
 };
 
 const deleteInactiveGame = async (client, gameId) => {
@@ -90,8 +105,9 @@ const loginGuest = async (client, socket, userName) => {
 };
 
 const logOut = async (socket, broadcast) => {
-  await deleteSession(null, socket, broadcast);
-  socket.close();
+  const response = await transactionDecorator(deleteSession)(socket, broadcast);
+  if (!response || response.type !== TYPES.ERROR) socket.close();
+  return response;
 };
 
 module.exports.deleteSession = transactionDecorator(deleteSession);

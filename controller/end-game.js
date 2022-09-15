@@ -6,7 +6,8 @@ const {
   restoreUsersToDefaultByGameId,
   moveGameToArchiveByGameId,
   getGameNameByGameId,
-  updateGameIdByWsId,
+  updateGameIdByUserId,
+  getUserIdByUserName,
 } = require("../model/end-game");
 const {
   lockGameId,
@@ -24,6 +25,7 @@ const {
   getIsPrivateIsRatedByGameName,
   insertNewGame,
 } = require("../model/pre-game");
+const { getWaitingPlayerNameByGameId } = require("../model/session");
 
 const scoreGame = async (client, gameId) => {
   const goalSuit = await getGoalSuitByGameId(client, gameId);
@@ -53,7 +55,8 @@ const endGame = async (client, gameId) => {
     client,
     gameName
   );
-  const wsIds = await getWsIdsByGameId(client, gameId);
+  const userIds = await getUserIdsByGameId(client, gameId);
+  const waitingPlayerName = await getWaitingPlayerNameByGameId(client, gameId);
 
   await scoreGame(client, gameId);
   const previousGoalSuit = await getGoalSuitByGameId(client, gameId);
@@ -62,12 +65,12 @@ const endGame = async (client, gameId) => {
   await moveGameToArchiveByGameId(client, gameId);
   await insertNewGame(client, gameName, isRated, isPrivate);
   const newGameId = await getGameIdByGameName(client, gameName);
+  userIds.push(await getUserIdByUserName(waitingPlayerName));
 
-  for (const wsId of wsIds) {
-    await updateGameIdByWsId(client, newGameId, wsId);
+  for (const userId of userIds) {
+    await updateGameIdByUserId(client, newGameId, userId);
   }
 
-  const userIds = await getUserIdsByGameId(client, newGameId);
   let playerNames = [];
   for (const userId of userIds) {
     playerNames.push(await getUserNameByUserId(client, userId));
@@ -81,6 +84,7 @@ const endGame = async (client, gameId) => {
   payload.newGameId = newGameId;
   payload.playerNames = playerNames;
 
+  const wsIds = await getWsIdsByGameId(client, gameId);
   wsIds.forEach((wsId) => {
     payload[wsId] = {
       socketTypesToInform: SOCKET_TYPES.MAP_WS_ID_TO_PAYLOAD,

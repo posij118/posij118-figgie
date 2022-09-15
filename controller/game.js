@@ -232,7 +232,8 @@ const leaveGame = async (client, socket, broadcast) => {
   const gameId = await getGameIdOrWaitingGameIdByWsId(client, socket.id);
   await lockGameId(client, gameId);
   const wsIds = await getWsIdsByGameId(client, gameId);
-  const gameStarted = await checkIfGameStartedByGameId(client, gameId);
+  let gameStarted = false;
+  if (gameId) gameStarted = await checkIfGameStartedByGameId(client, gameId);
   const waitingPlayerName = await getWaitingPlayerNameByGameId(client, gameId);
   const isRegistered = await getIsRegisteredByUserId(client, userId);
 
@@ -268,7 +269,8 @@ const leaveGame = async (client, socket, broadcast) => {
 
   broadcastObject.gameId = gameId;
   broadcastObject.playerName = userName;
-  return broadcastObject;
+  await broadcast(socket, broadcastObject);
+  return;
 };
 
 module.exports.postOrders = transactionDecorator(postOrders);
@@ -277,3 +279,4 @@ module.exports.cancelSuitTypeOrders =
   transactionDecorator(cancelSuitTypeOrders);
 module.exports.fillOrder = transactionDecorator(fillOrder);
 module.exports.leaveGame = transactionDecorator(leaveGame);
+module.exports.leaveGameUndecorated = leaveGame;

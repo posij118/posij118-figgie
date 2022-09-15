@@ -196,6 +196,7 @@ const gameReducerObject = createSlice({
       const deletedPlayerIndex = state.playerNames.findIndex(
         (playerName) => playerName === action.payload
       );
+      if (deletedPlayerIndex === -1) return state;
       state.playerNames.splice(deletedPlayerIndex, 1);
       state.chips.splice(deletedPlayerIndex, 1);
       state.numCards.splice(deletedPlayerIndex, 1);

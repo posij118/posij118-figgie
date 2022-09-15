@@ -69,7 +69,7 @@ const updateUserToJoinGame = async (
 
 const getGameIdByWsId = async (client, wsId) => {
   const response = await client.query(
-    `SELECT game_id, waiting_game_id FROM users WHERE ws_session_id=$1`,
+    `SELECT game_id FROM users WHERE ws_session_id=$1`,
     [wsId]
   );
   if (response.rows.length) return response.rows[0].game_id;

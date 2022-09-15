@@ -4,7 +4,7 @@ const {
 } = require("../utils/initialize-and-release-decorator");
 const { ORDERS_EMPTY } = require("../view/src/utils/constants");
 
-const updateUserByWsId = async (client, wsId, updatedValuesWrapper) => {
+const updateUserByUserId = async (client, userId, updatedValuesWrapper) => {
   const { clubs, spades, diamonds, hearts, chips } = updatedValuesWrapper;
 
   await client.query(
@@ -15,7 +15,7 @@ const updateUserByWsId = async (client, wsId, updatedValuesWrapper) => {
 			num_diamonds = COALESCE($3, num_diamonds),
 			num_hearts = COALESCE($4, num_hearts),
 			chips = COALESCE($5, chips)
-			WHERE ws_session_id = $6
+			WHERE id = $6
 			`,
     [
       clubs ?? null,
@@ -23,7 +23,7 @@ const updateUserByWsId = async (client, wsId, updatedValuesWrapper) => {
       diamonds ?? null,
       hearts ?? null,
       chips ?? null,
-      wsId,
+      userId,
     ]
   );
   return;
@@ -231,7 +231,7 @@ const getOrdersByGameId = async (client, gameId) => {
   return orders;
 };
 
-module.exports.updateUserByWsId = updateUserByWsId;
+module.exports.updateUserByUserId = updateUserByUserId;
 module.exports.updateGameByGameId = updateGameByGameId;
 module.exports.getUserIdByWsId = getUserIdByWsId;
 module.exports.insertNewOrder = insertNewOrder;

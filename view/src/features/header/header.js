@@ -1,16 +1,37 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useHistory, useLocation } from "react-router-dom";
-import {
-  gameReset,
-  selectPlayerNames,
-} from "../../app/game/game-slice";
-import { CLIENT } from "../../utils/constants";
+import { gameReset, selectPlayerNames, selectStartingTimestamp } from "../../app/game/game-slice";
+import { CLIENT, TYPES } from "../../utils/constants";
 import { faDoorClosed, faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import "./header.css";
-import { selectUserName, sessionReset, setUserName } from "../../app/session/session.slice";
+import {
+  selectUserName,
+  sessionReset,
+  setError,
+} from "../../app/session/session.slice";
 import { gamesReset } from "../../app/games/games-slice";
+
+const announceGamesListener = (...args) => {
+  const messageEvent = args[2];
+  const wsClient = args[0];
+  const dispatch = args[1];
+
+  let { type } = JSON.parse(
+    messageEvent.data
+  );
+
+  if (type === TYPES.ANNOUNCE_GAMES) {
+    wsClient.current.send(
+      JSON.stringify({
+        type: CLIENT.MESSAGE.LEAVE_GAME,
+      })
+    );
+    wsClient.current.removeEventListener("message", announceGamesListener);
+    dispatch(gameReset());
+  }
+}
 
 export const Header = (props) => {
   const { wsClient } = props;
@@ -19,20 +40,20 @@ export const Header = (props) => {
   const playerNames = useSelector(selectPlayerNames);
   const userName = useSelector(selectUserName);
   const dispatch = useDispatch();
+  const startingTimestamp = useSelector(selectStartingTimestamp);
+
+  useEffect(() => {
+    dispatch(setError(""));
+    //eslint-disable-next-line
+  }, [location]);
 
   const handleLeaveGame = () => {
     history.push("/lobby");
-    wsClient.current.send(
-      JSON.stringify({
-        type: CLIENT.MESSAGE.LEAVE_GAME,
-      })
-    );
-    dispatch(gameReset());
+    wsClient.current.addEventListener("message", announceGamesListener.bind({}, wsClient, dispatch)); 
   };
 
   const handleLogout = () => {
     history.push("/logged-out");
-    dispatch(setUserName(""));
 
     wsClient.current.send(
       JSON.stringify({
@@ -63,7 +84,7 @@ export const Header = (props) => {
         ) : (
           <></>
         )}
-        {userName ? (
+        {userName && !startingTimestamp ? (
           <>
             <div className="logout-container nav-item">
               <FontAwesomeIcon

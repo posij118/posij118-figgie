@@ -55,6 +55,7 @@ export const initializeWsClient = (
     switch (type) {
       case TYPES.GUEST_REGISTRATION_SUCCESSFUL:
         dispatch(setUserName(payload.userName));
+        history.push("/lobby");
         break;
       case TYPES.LOGIN_SUCCESSFUL:
         dispatch(setUserName(payload.userName));
@@ -70,6 +71,7 @@ export const initializeWsClient = (
         if (payload.chips)
           dispatch(updateCardsOrChips({ chips: payload.chips }));
         if (payload.gameId) dispatch(setGameExists());
+        if (payload.gameName) dispatch(setGameName(payload.gameName));
 
         if (payload.gameId) history.push(`/pre-game/${payload.gameId}`);
         dispatch(setGameToNotLoading());
@@ -104,13 +106,13 @@ export const initializeWsClient = (
         dispatch(deleteOrdersByPlayerName(payload));
         break;
       case TYPES.ORDER_FILLED:
-        if (payload.clubs)
+        if (Number.isInteger(payload.clubs))
           dispatch(updateCardsOrChips({ clubs: payload.clubs }));
-        if (payload.spades)
+        if (Number.isInteger(payload.spades))
           dispatch(updateCardsOrChips({ spades: payload.spades }));
-        if (payload.diamonds)
+        if (Number.isInteger(payload.diamonds))
           dispatch(updateCardsOrChips({ diamonds: payload.diamonds }));
-        if (payload.hearts)
+        if (Number.isInteger(payload.hearts))
           dispatch(updateCardsOrChips({ hearts: payload.hearts }));
         dispatch(updateCardsOrChips({ chips: payload.chips }));
         dispatch(updateNumCards(payload.numCards));
@@ -140,6 +142,29 @@ export const initializeWsClient = (
         dispatch(updateReady(payload.ready));
         dispatch(setGameExists());
         dispatch(setOrders(payload.orders));
+        dispatch(setGameName(payload.gameName));
+
+        history.push(`/game/${payload.gameId}`);
+        break;
+      case TYPES.REJOIN_GAME:
+        dispatch(
+          updateCardsOrChips({
+            clubs: payload.clubs,
+            spades: payload.spades,
+            diamonds: payload.diamonds,
+            hearts: payload.hearts,
+            chips: payload.chips,
+          })
+        );
+        dispatch(updateNumCards(payload.numCards));
+        dispatch(setGameName(payload.gameName));
+        dispatch(updateGameDuration(payload.gameDuration));
+        dispatch(updatePlayerNames(payload.playerNames));
+        dispatch(updateWaitingPlayerName(payload.waitingPlayerName));
+        dispatch(updateStartingTimestamp(payload.startingTimestamp));
+        dispatch(setOrders(payload.orders));
+        dispatch(setGameExists());
+
         history.push(`/game/${payload.gameId}`);
         break;
       case TYPES.ANNOUNCE_NEXT_GAME:

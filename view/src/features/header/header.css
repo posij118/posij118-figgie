@@ -24,7 +24,7 @@ nav .nav-item {
 	font-weight: 500;
 }
 
-.nav-leave-game {
+.nav-leave-game, .logout-container svg {
 	cursor: pointer;
 }
 

@@ -6,7 +6,12 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const WebSocket = require("ws");
-const { toggleReady, joinGame, createGame, rejoinGame } = require("./controller/pre-game");
+const {
+  toggleReady,
+  joinGame,
+  createGame,
+  rejoinGame,
+} = require("./controller/pre-game");
 const { v4: uuidv4 } = require("uuid");
 const {
   getWsIdsByGameId,
@@ -96,14 +101,17 @@ wsServer.on("connection", (socket) => {
         response = await loginUser(socket, payload.userName, payload.password);
         break;
       case CLIENT.MESSAGE.LOG_OUT:
-        await logOut(socket, broadcast);
+        response = await logOut(socket, broadcast);
         break;
       case CLIENT.MESSAGE.JOIN_LOBBY:
         response = await joinLobby();
         break;
       case CLIENT.MESSAGE.JOIN_GAME:
         response = await joinGame(payload.gameName, socket);
-        if (response.type === TYPES.JOIN_EXISTING_GAME && response.actionType === "JOIN")
+        if (
+          response.type === TYPES.JOIN_EXISTING_GAME &&
+          response.actionType === "JOIN"
+        )
           await broadcast(socket, {
             socketTypesToInform: SOCKET_TYPES.ALL,
             type: TYPES.ANNOUNCE_WAITING_PLAYER,
@@ -176,7 +184,7 @@ wsServer.on("connection", (socket) => {
         );
         break;
       case CLIENT.MESSAGE.LEAVE_GAME:
-        response = await leaveGame(socket, broadcast);
+        await leaveGame(socket, broadcast);
         break;
     }
 
@@ -189,10 +197,7 @@ wsServer.on("connection", (socket) => {
 });
 
 const broadcast = async (socket, broadcastObject) => {
-  if (!broadcastObject) {
-    console.log("Empty broadcast object");
-    return;
-  }
+  if (!broadcastObject) return;
   if (broadcastObject instanceof Array) {
     broadcastObject.forEach(async (object) => await broadcast(socket, object));
     return;

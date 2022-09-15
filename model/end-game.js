@@ -1,3 +1,4 @@
+const { response } = require("express");
 const {
   initializeAndReleaseClientDecorator,
 } = require("../utils/initialize-and-release-decorator");
@@ -84,15 +85,15 @@ const getGameNameByGameId = async (client, gameId) => {
   return response.rows[0].name;
 };
 
-const updateGameIdByWsId = async (client, gameId, wsId) => {
+const updateGameIdByUserId = async (client, gameId, userId) => {
   await client.query(
     `
 			UPDATE users SET
 				game_id=$1,
         waiting_game_id=$2
-			WHERE ws_session_id=$3
+			WHERE id=$3
 		`,
-    [gameId, null, wsId]
+    [gameId, null, userId]
   );
   return;
 };
@@ -110,9 +111,17 @@ const deleteGameInfoByWsId = async (client, wsId) => {
         ready=$7,
         chips=$8
       WHERE ws_session_id=$9
-    `, [...Array(8).map((elem) => null), wsId]
+    `,
+    [...Array(8).map((elem) => null), wsId]
   );
   return;
+};
+
+const getUserIdByUserName = async (client, userName) => {
+  await client.query(`SELECT id FROM users WHERE username=$1`, [userName]);
+
+  if (!response.rows.length) return null;
+  return response.rows[0].id;
 };
 
 module.exports.getGoalSuitByGameId = getGoalSuitByGameId;
@@ -122,7 +131,8 @@ module.exports.updateChipsByUserId = updateChipsByUserId;
 module.exports.restoreUsersToDefaultByGameId = restoreUsersToDefaultByGameId;
 module.exports.moveGameToArchiveByGameId = moveGameToArchiveByGameId;
 module.exports.getGameNameByGameId = getGameNameByGameId;
-module.exports.updateGameIdByWsId = updateGameIdByWsId;
+module.exports.updateGameIdByUserId = updateGameIdByUserId;
 module.exports.deleteGameInfoByWsId = deleteGameInfoByWsId;
+module.exports.getUserIdByUserName = getUserIdByUserName;
 
 module.exports = initializeAndReleaseClientDecorator(module.exports);

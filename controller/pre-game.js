@@ -26,6 +26,7 @@ const {
 const {
   getIsRegisteredByUserId,
   getWaitingPlayerNameByGameId,
+  getCardsByUserId,
 } = require("../model/session");
 const dotenv = require("dotenv").config();
 
@@ -123,24 +124,51 @@ const joinOrCreateGame = async (
       gameId
     );
     const orders = await getOrdersByGameId(client, gameId);
+    const { clubs, spades, diamonds, hearts } = await getCardsByUserId(
+      client,
+      userId
+    );
 
-    return {
-      socketTypesToInform: SOCKET_TYPES.SAME_GAME,
-      type: TYPES.JOIN_EXISTING_GAME,
-      payload: {
-        chips: chips.slice(0, 4),
-        numCards,
-        gameId,
-        gameDuration: Number(process.env.GAME_DURATION) || 240000,
-        playerNames: playerNames.slice(0, 4),
-        ready: ready.slice(0, 4),
-        waitingPlayerName,
-        startingTimestamp,
-        userName,
-        orders,
-        actionType,
-      },
-    };
+    if (actionType !== "REJOIN")
+      return {
+        socketTypesToInform: SOCKET_TYPES.SAME_GAME,
+        type: TYPES.JOIN_EXISTING_GAME,
+        payload: {
+          chips: chips.filter((chipsCount, index) => index !== indexToInsert),
+          numCards,
+          gameId,
+          gameName,
+          gameDuration: Number(process.env.GAME_DURATION) || 240000,
+          playerNames: playerNames.filter((playerName, index) => index !== indexToInsert),
+          ready: ready.filter((ready, index) => index !== indexToInsert),
+          waitingPlayerName,
+          startingTimestamp,
+          userName,
+          orders,
+          actionType,
+        },
+      };
+
+    if (actionType === "REJOIN")
+      return {
+        socketTypesToInform: SOCKET_TYPES.ITSELF,
+        type: TYPES.REJOIN_GAME,
+        payload: {
+          gameId,
+          chips,
+          numCards,
+          gameName,
+          gameDuration: Number(process.env.GAME_DURATION) || 240000,
+          playerNames,
+          waitingPlayerName,
+          startingTimestamp,
+          orders,
+          clubs,
+          spades,
+          diamonds,
+          hearts,
+        },
+      };
   }
 
   const broadcastObject = {
@@ -186,7 +214,7 @@ const toggleReady = async (client, socket) => {
 
 const joinGame = async (client, gameName, socket) => {
   await lockGameName(client, gameName);
-  console.log(gameName, socket.id);
+
   const response = await getIsPrivateIsRatedByGameName(client, gameName);
   if (!response)
     return {

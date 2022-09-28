@@ -4,8 +4,8 @@
   "description": "website to play online multiplayer of figgie",
   "main": "view/index.js",
   "scripts": {
-    "test": "npm test",
-    "start": "nodemon app.js"
+    "test": "mocha ./test/tests/*.js --require ./test/hooks.js --exit --game_duration=100 --close_on_unsuccessful_login=10 --salt-rounds=4",
+    "start": "nodemon app.js -i ./test"
   },
   "keywords": [
     "figgie",
@@ -18,16 +18,18 @@
   "dependencies": {
     "bcrypt": "^5.0.1",
     "body-parser": "^1.20.0",
+    "chai": "^4.3.6",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.0.1",
     "express": "^4.18.1",
-    "express-session": "^1.17.3",
+    "glicko2-lite": "^2.0.1",
+    "mocha": "^10.0.0",
     "morgan": "^1.10.0",
     "nodemon": "^2.0.19",
-    "passport": "^0.6.0",
     "pg": "^8.7.3",
     "prettier": "^2.7.1",
+    "seed-random": "^2.2.0",
     "uuid": "^8.3.2",
     "validator": "^13.7.0",
     "ws": "^8.8.1"

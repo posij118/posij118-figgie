@@ -12,7 +12,13 @@ const {
   lockGameName,
   getWsIdsByGameId,
 } = require("../model/pre-game");
-const { SOCKET_TYPES, TYPES, SERVER } = require("../view/src/utils/constants");
+const {
+  SOCKET_TYPES,
+  TYPES,
+  SERVER,
+  MALFORMED_REQUEST,
+  BASE_CHIPS,
+} = require("../view/src/utils/constants");
 const { startGame } = require("./start-game");
 const { transactionDecorator } = require("../utils/transaction-decorator");
 const { deleteInactiveGame } = require("./session");
@@ -28,6 +34,7 @@ const {
   getWaitingPlayerNameByGameId,
   getCardsByUserId,
 } = require("../model/session");
+const { throwError } = require("../utils/helper-functions");
 const dotenv = require("dotenv").config();
 
 const joinOrCreateGame = async (
@@ -40,7 +47,7 @@ const joinOrCreateGame = async (
 ) => {
   const userId = await getUserIdByWsId(client, socket.id);
   if (!userId) {
-    setTimeout(socket ? socket.close() : {}, 1000);
+    setTimeout(() => {socket ? socket.close() : {}}, 1000);
     return {
       socketTypesToInform: SOCKET_TYPES.ITSELF,
       type: TYPES.CLOSING_MESSAGE,
@@ -48,13 +55,12 @@ const joinOrCreateGame = async (
     };
   }
 
+  const userGameId = await getGameIdByWsId(client, socket.id);
+  if (userGameId && actionType !== "REJOIN") return throwError("User is already in another game.")
+
   const isRegistered = await getIsRegisteredByUserId(client, userId);
   if (!isRegistered && isRated) {
-    return {
-      socketTypesToInform: SOCKET_TYPES.ITSELF,
-      type: TYPES.ERROR,
-      payload: { message: "Guests cannot join rated games.", stack: "" },
-    };
+    return throwError("Guests cannot join rated games.");
   }
 
   const userName = await getUserNameByUserId(client, userId);
@@ -76,18 +82,14 @@ const joinOrCreateGame = async (
     (inGameUserId) => inGameUserId < userId
   ).length;
 
-  const INITIAL_CHIPS = 350;
+  const INITIAL_CHIPS = BASE_CHIPS;
   const numPlayers = await getNumberOfPlayingAndWatingPlayersByGameId(
     client,
     gameId
   );
 
   if (numPlayers >= 5 && actionType !== "REJOIN") {
-    return {
-      socketTypesToInform: SOCKET_TYPES.ITSELF,
-      type: TYPES.ERROR,
-      payload: { message: "Game already full", stack: "" },
-    };
+    return throwError("Game already full");
   }
 
   if (actionType !== "REJOIN") {
@@ -130,24 +132,36 @@ const joinOrCreateGame = async (
     );
 
     if (actionType !== "REJOIN")
-      return {
-        socketTypesToInform: SOCKET_TYPES.SAME_GAME,
-        type: TYPES.JOIN_EXISTING_GAME,
-        payload: {
-          chips: chips.filter((chipsCount, index) => index !== indexToInsert),
-          numCards,
-          gameId,
-          gameName,
-          gameDuration: Number(process.env.GAME_DURATION) || 240000,
-          playerNames: playerNames.filter((playerName, index) => index !== indexToInsert),
-          ready: ready.filter((ready, index) => index !== indexToInsert),
-          waitingPlayerName,
-          startingTimestamp,
-          userName,
-          orders,
-          actionType,
+      return [
+        {
+          socketTypesToInform: SOCKET_TYPES.SAME_GAME,
+          type: TYPES.JOIN_EXISTING_GAME,
+          payload: {
+            chips: chips.filter((chipsCount, index) => index !== indexToInsert),
+            numCards,
+            gameId,
+            gameName,
+            gameDuration: Number(process.env.GAME_DURATION) || 240000,
+            playerNames: playerNames.filter(
+              (playerName, index) => index !== indexToInsert
+            ),
+            ready: ready.filter((ready, index) => index !== indexToInsert),
+            waitingPlayerName,
+            startingTimestamp,
+            userName,
+            orders,
+            actionType,
+          },
         },
-      };
+        {
+          socketTypesToInform: SOCKET_TYPES.ALL,
+          type: TYPES.ANNOUNCE_WAITING_PLAYER,
+          payload: {
+            gameId,
+            waitingPlayerName,
+          },
+        },
+      ];
 
     if (actionType === "REJOIN")
       return {
@@ -171,26 +185,48 @@ const joinOrCreateGame = async (
       };
   }
 
-  const broadcastObject = {
-    socketTypesToInform: SOCKET_TYPES.SAME_GAME,
-    type: TYPES.PRE_GAME_CONFIG,
-    payload: {
-      gameId,
-      gameName,
-      playerNames,
-      isRated,
-      ready,
-      chips,
-      userName,
+  const broadcastObjects = [
+    {
+      socketTypesToInform: SOCKET_TYPES.SAME_GAME,
+      type: TYPES.PRE_GAME_CONFIG,
+      payload: {
+        gameId,
+        gameName,
+        playerNames,
+        isRated,
+        ready,
+        chips,
+        userName,
+      },
     },
-  };
+  ];
 
-  if (!gameExists) broadcastObject.socketTypesToInform = SOCKET_TYPES.ALL;
-  return broadcastObject;
+  if (!gameExists) {
+    broadcastObjects.push({
+      type: TYPES.ANNOUNCE_NEW_GAME,
+      socketTypesToInform: SOCKET_TYPES.ALL,
+      payload: {
+        gameId,
+        gameName,
+        isRated,
+        playerNames,
+      },
+    });
+  } else if (actionType !== "REJOIN") {
+    broadcastObjects.push({
+      socketTypesToInform: SOCKET_TYPES.ALL,
+      type: TYPES.ANNOUNCE_PLAYER_JOINED,
+      payload: {
+        gameId,
+        playerName: userName,
+      },
+    });
+  }
+
+  return broadcastObjects;
 };
 
-const toggleReady = async (client, socket) => {
-  const wsId = socket.id;
+const toggleReady = async (client, wsId) => {
   await updateReadyByWsId(client, wsId);
 
   const gameId = await getGameIdByWsId(client, wsId);
@@ -200,10 +236,15 @@ const toggleReady = async (client, socket) => {
     ready.length <= 5 &&
     ready.reduce((a, b) => a && b)
   ) {
-    const response = await startGame(client, gameId).catch((err) => {
-      console.log(err);
-    });
-    return response;
+    const response = await startGame(client, gameId);
+    return [
+      response,
+      {
+        socketTypesToInform: SOCKET_TYPES.ALL,
+        type: TYPES.ANNOUNCE_HAS_STARTED,
+        payload: { gameId },
+      },
+    ];
   }
   return {
     socketTypesToInform: SOCKET_TYPES.SAME_GAME,
@@ -213,55 +254,49 @@ const toggleReady = async (client, socket) => {
 };
 
 const joinGame = async (client, gameName, socket) => {
+  if (typeof gameName !== "string") throwError(MALFORMED_REQUEST);
   await lockGameName(client, gameName);
 
   const response = await getIsPrivateIsRatedByGameName(client, gameName);
-  if (!response)
-    return {
-      socketTypesToInform: SOCKET_TYPES.ITSELF,
-      type: TYPES.ERROR,
-      payload: { message: "The game does not exist", stack: "" },
-    };
+  if (!response) return throwError("The game does not exist");
 
-  const actionType = "JOIN";
+  
+  const gameId = await getGameIdByGameName(client, gameName);
+  const wsIds = await getWsIdsByGameId(client, gameId);
+  let actionType = "JOIN";
+
+  if (wsIds.includes(socket.id)) {
+    if (response.isPrivate) actionType = "REJOIN";
+    else return throwError("User is already in game.");
+  }
+
   return await joinOrCreateGame(
     client,
     gameName,
     socket,
-    response.is_rated,
-    response.is_private,
+    response.isRated,
+    response.isPrivate,
     actionType
   );
 };
 
 const createGame = async (client, gameName, socket, isRated, isPrivate) => {
+  if (
+    typeof gameName !== "string" ||
+    typeof isRated !== "boolean" ||
+    typeof isPrivate !== "boolean"
+  )
+    throwError(MALFORMED_REQUEST);
   await lockGameName(client, gameName);
+
   const gameId = await getGameIdByGameName(client, gameName);
-  if (gameId)
-    return {
-      socketTypesToInform: SOCKET_TYPES.ITSELF,
-      type: TYPES.ERROR,
-      payload: { message: "The game already exists.", stack: "" },
-    };
+  if (gameId) return throwError("The game already exists.");
 
-  if (gameName.length > 50 || !gameName.length) {
-    return {
-      socketTypesToInform: SOCKET_TYPES.ITSELF,
-      type: TYPES.ERROR,
-      payload: { message: "Game name too long", stack: "" },
-    };
-  }
+  if (gameName.length > 50 || !gameName.length)
+    return throwError("Game name too long or empty");
 
-  if (isPrivate && isRated) {
-    return {
-      socketTypesToInform: SOCKET_TYPES.ITSELF,
-      type: TYPES.ERROR,
-      payload: {
-        message: "A game cannot be both private and rated.",
-        stack: "",
-      },
-    };
-  }
+  if (isPrivate && isRated)
+    return throwError("A game cannot be both private and rated.");
 
   const actionType = "CREATE";
   return await joinOrCreateGame(
@@ -275,22 +310,16 @@ const createGame = async (client, gameName, socket, isRated, isPrivate) => {
 };
 
 const rejoinGame = async (client, gameName, socket) => {
+  if (typeof gameName !== "string") throwError(MALFORMED_REQUEST);
   await lockGameName(client, gameName);
+
   const gameId = await getGameIdByGameName(client, gameName);
   if (!gameId)
-    return {
-      socketTypesToInform: SOCKET_TYPES.ITSELF,
-      type: TYPES.ERROR,
-      payload: { message: "The game does not exist.", stack: "" },
-    };
+    return throwError("The game does not exist.");
 
   const wsIds = await getWsIdsByGameId(client, gameId);
   if (!wsIds.includes(socket.id))
-    return {
-      socketTypesToInform: SOCKET_TYPES.ITSELF,
-      type: TYPES.ERROR,
-      payload: { message: "The player is not in the game", stack: "" },
-    };
+    return throwError("The player is not in the game");
 
   const response = await getIsPrivateIsRatedByGameName(client, gameName);
   const actionType = "REJOIN";
@@ -298,8 +327,8 @@ const rejoinGame = async (client, gameName, socket) => {
     client,
     gameName,
     socket,
-    response.is_rated,
-    response.is_private,
+    response.isRated,
+    response.isPrivate,
     actionType
   );
 };

@@ -9,6 +9,7 @@ const getGoalSuitByGameId = async (client, gameId) => {
     [gameId]
   );
 
+  if (!response.rows.length) return null;
   return response.rows[0].goal_suit;
 };
 
@@ -48,16 +49,16 @@ const restoreUsersToDefaultByGameId = async (client, gameId) => {
   await client.query(
     `
 			UPDATE users SET
-				num_clubs=0,
-				num_spades=0,
-				num_diamonds=0,
-				num_hearts=0,
+				num_clubs=$3,
+				num_spades=$3,
+				num_diamonds=$3,
+				num_hearts=$3,
 				ready=$2,
-				game_id=$3,
-        waiting_game_id=$3
+				game_id=$4,
+        waiting_game_id=$4
 			WHERE game_id=$1 OR waiting_game_id=$1
 		`,
-    [gameId, false, null]
+    [gameId, false, null, null]
   );
 };
 
@@ -82,6 +83,7 @@ const getGameNameByGameId = async (client, gameId) => {
     gameId,
   ]);
 
+  if (!response.rows.length) return null;
   return response.rows[0].name;
 };
 
@@ -118,11 +120,41 @@ const deleteGameInfoByWsId = async (client, wsId) => {
 };
 
 const getUserIdByUserName = async (client, userName) => {
-  await client.query(`SELECT id FROM users WHERE username=$1`, [userName]);
+  const response = await client.query(
+    `SELECT id FROM users WHERE username=$1`,
+    [userName]
+  );
 
   if (!response.rows.length) return null;
   return response.rows[0].id;
 };
+
+const getGameFromArchiveByGameId = async (client, gameId) => {
+  const response = await client.query(
+    `SELECT * FROM games_archive WHERE id=$1`,
+    [gameId]
+  );
+
+  if (!response.rows.length) return null;
+  return response.rows[0];
+};
+
+const setLastGameByUserId = async (client, userId) => {
+  await client.query(
+    `UPDATE users SET last_game_at = $1 WHERE id=$2`,
+    [new Date(), userId]
+  );
+  return;
+};
+
+const addEntryToUsersGamesArchive = async (client, gameId, userId, chipsDelta, ratingDelta) => {
+   await client.query(
+    `INSERT INTO users_games_archive (
+      user_id, game_id, chips_delta, rating_delta
+    ) VALUES ($1, $2, $3, $4)`, [gameId, userId, chipsDelta, ratingDelta]
+  );
+  return;
+}
 
 module.exports.getGoalSuitByGameId = getGoalSuitByGameId;
 module.exports.getNumCardsBySuitGameId = getNumCardsBySuitGameId;
@@ -134,5 +166,8 @@ module.exports.getGameNameByGameId = getGameNameByGameId;
 module.exports.updateGameIdByUserId = updateGameIdByUserId;
 module.exports.deleteGameInfoByWsId = deleteGameInfoByWsId;
 module.exports.getUserIdByUserName = getUserIdByUserName;
+module.exports.getGameFromArchiveByGameId = getGameFromArchiveByGameId;
+module.exports.setLastGameByUserId = setLastGameByUserId;
+module.exports.addEntryToUsersGamesArchive = addEntryToUsersGamesArchive;
 
 module.exports = initializeAndReleaseClientDecorator(module.exports);

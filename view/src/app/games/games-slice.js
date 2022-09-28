@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const initialState = []
+const initialState = [];
 
 const gamesReducerObject = createSlice({
   name: "games",
@@ -52,9 +52,20 @@ const gamesReducerObject = createSlice({
               players: game.players.filter(
                 (player) => player !== action.payload.playerName
               ),
+              waitingPlayer:
+                game.waitingPlayer === action.payload.playerName
+                  ? null
+                  : game.waitingPlayer,
             }
           : game
       );
+
+      if (
+        state.find((game) => game.id === action.payload.id) &&
+        !state.find((game) => game.id === action.payload.id).players.length
+      )
+        state = state.filter((game) => game.id !== action.payload.id);
+
       return state;
     },
 
@@ -72,7 +83,8 @@ export const addGame = gamesReducerObject.actions.addGame;
 export const deleteGameById = gamesReducerObject.actions.deleteGameById;
 export const updateGameById = gamesReducerObject.actions.updateGameById;
 export const addPlayerForLobby = gamesReducerObject.actions.addPlayerForLobby;
-export const deletePlayerForLobby = gamesReducerObject.actions.deletePlayerForLobby;
+export const deletePlayerForLobby =
+  gamesReducerObject.actions.deletePlayerForLobby;
 export const setGames = gamesReducerObject.actions.setGames;
 export const gamesReset = gamesReducerObject.actions.reset;
 

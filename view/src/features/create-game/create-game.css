@@ -1,0 +1,51 @@
+.create-game {
+    display: flex;
+    flex-wrap: wrap;
+    text-align: center;
+    margin: 1rem 30% 0 30%;
+}
+
+.create-game form {
+    width: 100%;
+}
+
+.create-game-header, .create-game-footer {
+    width: 100%;
+}
+
+.create-game-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    font-size: 1.5rem;
+}
+
+.create-game-row input {
+    transform: scale(1.5);
+    max-width: 7rem;
+}
+
+.create-game-footer-button {
+    min-width: 5rem;
+    padding: 1rem;
+    border-radius: 1rem;
+    font-size: 1.5rem;
+    margin: 0 1rem;
+    cursor: pointer;
+    text-decoration: none;
+    color: black;
+    background-color: white;
+}
+
+.create-game-footer-button:hover {
+    color: rgb(60, 60, 60);
+}
+
+.create-game-button-green {
+    border: 2px solid green;
+}
+
+.create-game-button-red {
+    border: 2px solid red;
+}

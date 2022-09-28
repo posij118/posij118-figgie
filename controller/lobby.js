@@ -29,7 +29,7 @@ const joinLobby = async (client) => {
   return {
     socketTypesToInform: SOCKET_TYPES.ITSELF,
     type: TYPES.ANNOUNCE_GAMES,
-    payload: {games},
+    payload: { games },
   };
 };
 

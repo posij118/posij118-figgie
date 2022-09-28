@@ -21,7 +21,7 @@ const SERVER = {
     CONNECTION_TIMED_OUT: "CONNECTION_TIMED_OUT",
     SESSION_NOT_FOUND: "SESSION_NOT_FOUND",
     WRONG_USERNAME_OR_PASSWORD: "WRONG_USERNAME_OR_PASSWORD",
-  }
+  },
 };
 
 const SOCKET_TYPES = {
@@ -52,6 +52,7 @@ const TYPES = {
   ANNOUNCE_HAS_STARTED: "ANNOUNCE_HAS_STARTED",
   ANNOUNCE_PLAYER_JOINED: "ANNOUNCE_PLAYER_JOINED",
   ANNOUNCE_PLAYER_LEFT: "ANNOUNCE_PLAYER_LEFT",
+  ANNOUNCE_NEW_GAME: "ANNOUNCE_NEW_GAME",
 };
 
 // prettier-ignore
@@ -84,6 +85,25 @@ const ORDERS_EMPTY = {
   offersHearts: [],
 };
 
+const MALFORMED_REQUEST = "Malformed request";
+const MALFORMED_REQUEST_OBJECT = {
+  socketTypesToInform: SOCKET_TYPES.ITSELF,
+  type: TYPES.ERROR,
+  payload: { message: MALFORMED_REQUEST, stack: "" },
+};
+
+const BASE_RATING = 1500;
+const BASE_RATING_DEV = 350;
+const BASE_RATING_VOL = 0.06;
+const BASE_CHIPS = 350;
+
+// formula: dev = sqrt(dev^2 + num_days * DAILY_DEV_INCREASE)
+// determines how fast rating deviation increases when inactive
+const DAILY_DEV_INCREASE = 100;
+
+// constant to determine the magnitude of rating changes
+const DELTA_CHIPS_TO_GET_PLUS_ONE_SCORE = 500;
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = exports = {
     CLIENT,
@@ -93,5 +113,13 @@ if (typeof module !== "undefined" && module.exports) {
     SUIT_IDS_ARRAY,
     ORDER_PRICES_EMPTY,
     ORDERS_EMPTY,
+    MALFORMED_REQUEST,
+    MALFORMED_REQUEST_OBJECT,
+    BASE_RATING,
+    BASE_RATING_DEV,
+    BASE_CHIPS,
+    DAILY_DEV_INCREASE,
+    DELTA_CHIPS_TO_GET_PLUS_ONE_SCORE,
+    BASE_RATING_VOL,
   };
 }

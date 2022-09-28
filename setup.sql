@@ -23,7 +23,12 @@ CREATE TABLE users (
   num_hearts integer CHECK (num_hearts >= 0 AND num_hearts <= 12),
   chips real,
   ready bool,
-  waiting_game_id bigint REFERENCES games(id)
+  waiting_game_id bigint REFERENCES games(id),
+  registered_at timestamp NOT NULL,
+  last_game_at timestamp,
+  rating integer,
+  rating_dev real,
+  rating_vol real,
 );
 
 CREATE TABLE orders (
@@ -42,4 +47,12 @@ CREATE TABLE games_archive (
   goal_suit suit_type,
   name varchar(50) NOT NULL,
   is_rated bool NOT NULL
+);
+
+CREATE TABLE users_games_archive (
+ 	user_id bigint NOT NULL,
+  game_id bigint NOT NULL,
+  chips_delta int NOT NULL,
+  rating_delta real,
+  PRIMARY KEY (user_id, game_id)
 );

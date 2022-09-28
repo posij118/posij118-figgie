@@ -54,3 +54,58 @@
     color: gray;
     font-size: 0.75rem;
 }
+
+.lobby-footer {
+    display: flex;
+    justify-content: space-between;
+    margin: 1rem 20% 0 20%;
+    width: 60%;
+}
+
+.lobby-footer-button {
+    min-width: 5rem;
+    padding: 0.75rem;
+    border-radius: 1rem;
+    text-decoration: none;
+    color: darkgreen;
+    font-weight: bold;
+    font-size: 1.25rem;
+}
+
+.lobby-footer-button-green svg {
+    color: green;
+    padding-right: 0.5rem;
+}
+
+.lobby-footer a:hover {
+    color: rgb(0, 60, 0);
+}
+
+.lobby-footer-button-green {
+    border: 2px solid green;
+}
+
+.placeholder {
+    font-size: 2rem;
+    color: rgb(60, 60, 60);
+    margin-top: 2rem;
+}
+
+#join-game-form {
+    display: inline-block;
+    font-size: 1.5rem;
+}
+
+#join-game-name {
+    height: 1.5rem;
+    max-width: 5rem;
+    margin: 0 2rem 0 1rem;
+}
+
+#join-game-submit {
+    padding: 0.5rem;
+    border: 2px solid darkgreen;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1.25rem;
+}

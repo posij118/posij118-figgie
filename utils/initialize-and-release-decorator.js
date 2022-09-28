@@ -1,4 +1,11 @@
-const pool = require('../database');
+const pool = require("../database");
+
+/*
+  Usage: 
+    This function should be passed to any database processing function f.
+    Then f should be called client-first,
+    passing a falsey value as a client makes f initialize and release its own client for the query.
+*/
 
 const initializeAndReleaseClientDecorator = (decoratedObject) =>
   Object.fromEntries(
@@ -13,4 +20,5 @@ const initializeAndReleaseClientDecorator = (decoratedObject) =>
     ])
   );
 
-module.exports.initializeAndReleaseClientDecorator = initializeAndReleaseClientDecorator;
+module.exports.initializeAndReleaseClientDecorator =
+  initializeAndReleaseClientDecorator;

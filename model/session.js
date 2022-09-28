@@ -1,6 +1,7 @@
 const {
   initializeAndReleaseClientDecorator,
 } = require("../utils/initialize-and-release-decorator");
+const { BASE_RATING, BASE_RATING_DEV, BASE_RATING_VOL } = require("../view/src/utils/constants");
 
 const getIsRegisteredByUserId = async (client, userId) => {
   const response = await client.query(
@@ -8,6 +9,7 @@ const getIsRegisteredByUserId = async (client, userId) => {
     [userId]
   );
 
+  if (!response.rows.length) return null;
   return response.rows[0].is_registered;
 };
 
@@ -43,11 +45,11 @@ const registerUser = async (client, userName, hashedPassword) => {
   await client.query(
     `
     INSERT INTO users
-      (is_registered, username, password)
+      (is_registered, username, password, registered_at, rating, rating_dev, rating_vol)
     VALUES
-      ($1, $2, $3)
+      ($1, $2, $3, $4, $5, $6, $7)
   `,
-    [true, userName, hashedPassword]
+    [true, userName, hashedPassword, new Date(), BASE_RATING, BASE_RATING_DEV, BASE_RATING_VOL]
   );
   return;
 };
@@ -73,8 +75,8 @@ const updateWsIdByUserName = async (client, userName, wsId) => {
 const registerGuest = async (client, wsId, userName) => {
   await client.query(
     `INSERT INTO users 
-  (is_registered, ws_session_id, username) VALUES ($1, $2, $3)`,
-    [false, wsId, userName]
+  (is_registered, ws_session_id, username, registered_at) VALUES ($1, $2, $3, $4)`,
+    [false, wsId, userName, new Date()]
   );
   return;
 };
@@ -110,6 +112,26 @@ const getCardsByUserId = async (client, userId) => {
   };
 };
 
+const getWsIdByUserId = async (client, userId) => {
+  const response = await client.query(
+    `SELECT ws_session_id FROM users WHERE id=$1`,
+    [userId]
+  );
+
+  if (!response.rows.length) return null;
+  return response.rows[0].ws_session_id;
+};
+
+const getRegisteredAtByUserId = async (client, userId) => {
+  const response = await client.query(
+    `SELECT registered_at FROM users WHERE id=$1`,
+    [userId]
+  );
+
+  if (!response.rows.length) return null;
+  return response.rows[0].registered_at;
+}
+
 module.exports.getIsRegisteredByUserId = getIsRegisteredByUserId;
 module.exports.deleteWsIdByUserId = deleteWsIdByUserId;
 module.exports.deleteUserByUserId = deleteUserByUserId;
@@ -122,5 +144,7 @@ module.exports.updateWsIdByUserName = updateWsIdByUserName;
 module.exports.registerGuest = registerGuest;
 module.exports.getWaitingPlayerNameByGameId = getWaitingPlayerNameByGameId;
 module.exports.getCardsByUserId = getCardsByUserId;
+module.exports.getWsIdByUserId = getWsIdByUserId;
+module.exports.getRegisteredAtByUserId = getRegisteredAtByUserId;
 
 module.exports = initializeAndReleaseClientDecorator(module.exports);

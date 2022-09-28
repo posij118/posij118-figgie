@@ -23,6 +23,7 @@ const insertNewGame = async (client, gameName, isRated, isPrivate) => {
     "INSERT INTO games (name, is_rated, is_private) VALUES ($1, $2, $3)",
     [gameName, isRated, isPrivate]
   );
+  return;
 };
 
 const getPreGameInfoByName = async (client, gameName) => {
@@ -142,6 +143,7 @@ const checkIfGameStartedByGameId = async (client, gameId) => {
     [gameId]
   );
 
+  if (!response.rows.length) return null;
   return Boolean(response.rows[0].started_at);
 };
 
@@ -152,13 +154,18 @@ const getIsPrivateIsRatedByGameName = async (client, gameName) => {
   );
 
   if (!response.rows.length) return null;
-  return response.rows[0];
+  return {
+    isPrivate: response.rows[0].is_private,
+    isRated: response.rows[0].is_rated,
+  };
 };
 
 const lockGameName = async (client, gameName) => {
-  await client.query(`SELECT * FROM games WHERE name=$1 FOR UPDATE`, [gameName]);
+  await client.query(`SELECT * FROM games WHERE name=$1 FOR UPDATE`, [
+    gameName,
+  ]);
   return;
-}
+};
 
 module.exports.checkIfGameExists = checkIfGameExists;
 module.exports.checkIfUserExists = checkIfUserExists;

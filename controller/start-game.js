@@ -115,3 +115,4 @@ const startGame = async (client, gameId) => {
 };
 
 module.exports.startGame = startGame;
+module.exports.getGoalSuitFromCommonSuit = getGoalSuitFromCommonSuit;

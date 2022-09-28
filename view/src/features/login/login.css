@@ -8,7 +8,7 @@ label {
     line-height: 1.8rem;
 }
 
-.wrong-password-text {
+.error-text {
     color: red;
     font-weight: 600;
     width: 100%;

@@ -12,6 +12,8 @@ import { RegistrationSuccessful } from "./features/register/registration-success
 import { Lobby } from "./features/lobby/lobby";
 import { useSelector } from "react-redux";
 import { selectError, selectUserName } from "./app/session/session.slice";
+import { CreateGame } from "./features/create-game/create-game";
+import { Footer } from "./features/game/footer/footer";
 
 function App() {
   const wsClient = useRef(null);
@@ -24,7 +26,11 @@ function App() {
         <div className="error-container">
           {error.message}
           <br />
-          {error.stack}
+          {new RegExp("localhost").test(window.location.hostname) ? (
+            error.stack
+          ) : (
+            <></>
+          )}
         </div>
       ) : (
         <></>
@@ -50,6 +56,9 @@ function App() {
         <Route path="/logged-out">
           <LoggedOut />
         </Route>
+        <Route path="/create-game">
+          <CreateGame wsClient={wsClient} />
+        </Route>
         <Route path="/lobby">
           {userName ? (
             <Lobby wsClient={wsClient} />
@@ -60,6 +69,7 @@ function App() {
         <Route path="/">
           <Redirect to="/login"></Redirect>
         </Route>
+        <Footer />
       </Router>
     </div>
   );

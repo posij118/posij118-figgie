@@ -1,5 +1,6 @@
 const pool = require("../database");
-const { SOCKET_TYPES, TYPES } = require('../view/src/utils/constants');
+const { TYPES, SOCKET_TYPES } = require("../view/src/utils/constants");
+const dotenv = require("dotenv").config();
 
 const transactionDecorator =
   (decoratedFunction) =>
@@ -8,15 +9,24 @@ const transactionDecorator =
     try {
       await client.query("BEGIN");
       const response = await decoratedFunction(client, ...args);
+      if (response && response.type === TYPES.ERROR) {
+        throw response.payload;
+      }
       await client.query("END");
       return response;
     } catch (err) {
       await client.query("ROLLBACK");
-      return {
-        socketTypesToInform: SOCKET_TYPES.ITSELF,
-        type: TYPES.ERROR,
-        payload: { message: err.message, stack: err.stack },
-      };
+      return process.env.LOCAL
+        ? {
+            socketTypesToInform: SOCKET_TYPES.ITSELF,
+            type: TYPES.ERROR,
+            payload: { message: err.message, stack: err.stack },
+          }
+        : {
+            socketTypesToInform: SOCKET_TYPES.ITSELF,
+            type: TYPES.ERROR,
+            payload: { message: err.message },
+          };
     } finally {
       client.release();
     }

@@ -16,25 +16,30 @@ import {
   updateStartingTimestamp,
   updateGameDuration,
   setOrders,
+  gameReset,
 } from "../app/game/game-slice";
 import {
   addGame,
   addPlayerForLobby,
   deleteGameById,
   deletePlayerForLobby,
+  gamesReset,
   setGames,
   updateGameById,
 } from "../app/games/games-slice";
-import { setError } from "../app/session/session.slice";
-import { SERVER, SOCKET_TYPES, TYPES } from "../utils/constants";
+import {
+  sessionReset,
+  setError,
+  setIsRegistered,
+  setGameName,
+  setUserName,
+} from "../app/session/session.slice";
+import { SERVER, TYPES } from "../utils/constants";
 
 export const initializeWsClient = (
   wsClient,
   dispatch,
   history,
-  setUserName,
-  setGameName,
-  setWrongPassword,
   games
 ) => {
   if (wsClient.current) {
@@ -50,15 +55,17 @@ export const initializeWsClient = (
     .replace("3000", "8000");
   wsClient.current = new WebSocket(URL);
   wsClient.current.addEventListener("message", (messageEvent) => {
-    let { socketTypesToInform, type, payload } = JSON.parse(messageEvent.data);
+    let { type, payload } = JSON.parse(messageEvent.data);
 
     switch (type) {
       case TYPES.GUEST_REGISTRATION_SUCCESSFUL:
         dispatch(setUserName(payload.userName));
+        dispatch(setIsRegistered(false));
         history.push("/lobby");
         break;
       case TYPES.LOGIN_SUCCESSFUL:
         dispatch(setUserName(payload.userName));
+        dispatch(setIsRegistered(true));
         history.push("/lobby");
         break;
       case TYPES.ERROR:
@@ -75,17 +82,6 @@ export const initializeWsClient = (
 
         if (payload.gameId) history.push(`/pre-game/${payload.gameId}`);
         dispatch(setGameToNotLoading());
-        if (socketTypesToInform === SOCKET_TYPES.ALL)
-          dispatch(
-            addGame({
-              id: payload.gameId,
-              name: payload.gameName,
-              isRated: payload.isRated,
-              players: payload.playerNames,
-              hasStarted: false,
-              waitingPlayerName: null,
-            })
-          );
         break;
       case TYPES.GAME_CONFIG:
         dispatch(
@@ -167,6 +163,18 @@ export const initializeWsClient = (
 
         history.push(`/game/${payload.gameId}`);
         break;
+      case TYPES.ANNOUNCE_NEW_GAME:
+        dispatch(
+          addGame({
+            id: payload.gameId,
+            name: payload.gameName,
+            isRated: payload.isRated,
+            players: payload.playerNames,
+            hasStarted: false,
+            waitingPlayerName: null,
+          })
+        );
+        break;
       case TYPES.ANNOUNCE_NEXT_GAME:
         const oldGame = games.find((game) => game.id === payload.gameId);
         dispatch(deleteGameById(payload.gameId));
@@ -216,6 +224,10 @@ export const initializeWsClient = (
         dispatch(setGames(payload.games));
         break;
       case TYPES.CLOSING_MESSAGE:
+        dispatch(gameReset());
+        dispatch(gamesReset());
+        dispatch(sessionReset());
+
         switch (payload.reason) {
           case SERVER.MESSAGE.CONNECTION_TIMED_OUT:
             history.push("/logged-out");
@@ -224,7 +236,7 @@ export const initializeWsClient = (
             history.push("/logged-out");
             break;
           case SERVER.MESSAGE.WRONG_USERNAME_OR_PASSWORD:
-            setWrongPassword(true);
+            dispatch(setError({message: payload.message, stack: payload.stack}));
             break;
           default:
             console.log("No event listener yet", payload.reason);

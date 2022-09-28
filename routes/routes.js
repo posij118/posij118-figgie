@@ -10,24 +10,38 @@ const registerMiddleware = transactionDecorator(async (client, req, res) => {
   const userName = req.body.userName;
   const password = req.body.password;
 
-  if (userName.length > 6) {
-    res.status(400).send('Wrong format of an username or password.');
+  if (
+    typeof userName !== "string" ||
+    typeof password !== "string" ||
+    userName.length > 6 ||
+    !userName.length
+  ) {
+    res.status(400).send("Wrong format of an username or password.");
     return;
-  };
+  }
 
   await lockUsers(client);
   const userExists = await checkIfUserExists(client, userName);
   if (userExists) {
-    res.status(400).send('User already exists.');
+    res.status(400).send("User already exists.");
     return;
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(
+    password,
+    process.argv[8]
+      ? Number(process.argv[8].slice(14)) // Speed up testing compared to production
+      : 10
+  );
   await registerUser(client, userName, hashedPassword);
-  res.status(200).send('Registration successful');
+  res.status(200).send("Registration successful");
+  return;
 });
 
-router.post("/register", async (req, res) => await registerMiddleware(req, res));
+router.post(
+  "/register",
+  async (req, res) => await registerMiddleware(req, res)
+);
 
 router.get("*", (req, res) => {
   let url = path.join(__dirname, "../view/build", "index.html");
@@ -37,4 +51,4 @@ router.get("*", (req, res) => {
   res.sendFile(url);
 });
 
-module.exports = router;
+module.exports = { router, registerMiddleware };

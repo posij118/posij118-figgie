@@ -21,28 +21,48 @@ const {
   getSuitNameFromSuitTypeIndentifier,
   getTypeFromSuitTypeIdentifier,
   orderComparator,
+  throwError,
 } = require("../utils/helper-functions");
 const { transactionDecorator } = require("../utils/transaction-decorator");
-const { SOCKET_TYPES, TYPES } = require("../view/src/utils/constants");
+const {
+  SOCKET_TYPES,
+  TYPES,
+  MALFORMED_REQUEST,
+} = require("../view/src/utils/constants");
 const { capitalize } = require("../utils/helper-functions");
-const { deleteGameInfoByWsId } = require("../model/end-game");
-const { getWaitingPlayerNameByGameId, getIsRegisteredByUserId } = require("../model/session");
+const {
+  deleteGameInfoByWsId,
+  getUserIdsByGameId,
+  moveGameToArchiveByGameId,
+} = require("../model/end-game");
+const { getWaitingPlayerNameByGameId } = require("../model/session");
+const { getIsPrivateByGameId } = require("../model/lobby");
 
-const postOrders = async (client, socket, orders) => {
-  const gameId = await getGameIdByWsId(client, socket.id);
-  const userId = await getUserIdByWsId(client, socket.id);
+const postOrders = async (client, wsId, orders) => {
+  if (typeof orders !== "object" || !orders || !Object.entries(orders).length)
+    throwError(MALFORMED_REQUEST);
+
+  const gameId = await getGameIdByWsId(client, wsId);
+  const userId = await getUserIdByWsId(client, wsId);
   const timestamp = new Date();
   let newOrders = [];
   await lockGameId(client, gameId);
 
-  for (const [suitTypeIdentifier, price] of Object.entries(orders)) {
+  for (let [suitTypeIdentifier, price] of Object.entries(orders)) {
     if (!price) continue;
+    price = Number(price);
+
+    if (!Number.isInteger(price) || price <= 0 || price >= 100)
+      throwError(MALFORMED_REQUEST);
+
     const type = getTypeFromSuitTypeIdentifier(
       suitTypeIdentifier,
       "buy",
       "sell"
     );
     const suit = getSuitNameFromSuitTypeIndentifier(suitTypeIdentifier);
+    if (!suit || !type) throwError(MALFORMED_REQUEST);
+
     const oppositeType = type === "buy" ? "sell" : "buy";
     const oppositeSuitTypeIdentifier =
       type === "buy" ? `offers${capitalize(suit)}` : `bids${capitalize(suit)}`;
@@ -74,7 +94,7 @@ const postOrders = async (client, socket, orders) => {
       if (type === "sell" && orderToCompare.price >= price)
         return await fillOrder(
           client,
-          socket,
+          wsId,
           oppositeSuitTypeIdentifier,
           orderToCompare.id
         );
@@ -82,7 +102,7 @@ const postOrders = async (client, socket, orders) => {
       if (type === "buy" && orderToCompare.price <= price)
         return await fillOrder(
           client,
-          socket,
+          wsId,
           oppositeSuitTypeIdentifier,
           orderToCompare.id
         );
@@ -108,10 +128,13 @@ const postOrders = async (client, socket, orders) => {
   return newOrders;
 };
 
-const cancelSuitTypeOrders = async (client, socket, suitTypeIdentifier) => {
-  const userId = await getUserIdByWsId(client, socket.id);
+const cancelSuitTypeOrders = async (client, wsId, suitTypeIdentifier) => {
+  if (typeof suitTypeIdentifier !== "string") throwError(MALFORMED_REQUEST);
+
+  const userId = await getUserIdByWsId(client, wsId);
   const type = getTypeFromSuitTypeIdentifier(suitTypeIdentifier, "buy", "sell");
   const suit = getSuitNameFromSuitTypeIndentifier(suitTypeIdentifier);
+  if (!suit || !type) throwError(MALFORMED_REQUEST);
 
   const deletedOrderIds = await deleteOrdersByUserIdTypeSuit(
     client,
@@ -127,8 +150,8 @@ const cancelSuitTypeOrders = async (client, socket, suitTypeIdentifier) => {
   };
 };
 
-const cancelAllUserOrders = async (client, socket) => {
-  const userId = await getUserIdByWsId(client, socket.id);
+const cancelAllUserOrders = async (client, wsId) => {
+  const userId = await getUserIdByWsId(client, wsId);
   const userName = await getUserNameByUserId(client, userId);
 
   await deleteOrdersByUserId(client, userId);
@@ -139,11 +162,15 @@ const cancelAllUserOrders = async (client, socket) => {
   };
 };
 
-const fillOrder = async (client, socket, suitTypeIdentifier, orderId) => {
+const fillOrder = async (client, wsId, suitTypeIdentifier, orderId) => {
+  if (typeof suitTypeIdentifier !== "string") throwError(MALFORMED_REQUEST);
+
   const suit = getSuitNameFromSuitTypeIndentifier(suitTypeIdentifier);
   const type = getTypeFromSuitTypeIdentifier(suitTypeIdentifier, "buy", "sell");
-  const gameId = await getGameIdByWsId(client, socket.id);
-  const userId = await getUserIdByWsId(client, socket.id);
+  if (!suit || !type) throwError(MALFORMED_REQUEST);
+
+  const gameId = await getGameIdByWsId(client, wsId);
+  const userId = await getUserIdByWsId(client, wsId);
 
   if (type === "buy" && !(await getNumWithSuitByUserId(client, userId, suit)))
     return;
@@ -224,53 +251,54 @@ const fillOrder = async (client, socket, suitTypeIdentifier, orderId) => {
       }
     }
   }
+
+  return throwError("Order not found");
 };
 
-const leaveGame = async (client, socket, broadcast) => {
-  const userId = await getUserIdByWsId(client, socket.id);
+const leaveGame = async (client, wsId) => {
+  const userId = await getUserIdByWsId(client, wsId);
   const userName = await getUserNameByUserId(client, userId);
-  const gameId = await getGameIdOrWaitingGameIdByWsId(client, socket.id);
+  const gameId = await getGameIdOrWaitingGameIdByWsId(client, wsId);
   await lockGameId(client, gameId);
   const wsIds = await getWsIdsByGameId(client, gameId);
+  
   let gameStarted = false;
   if (gameId) gameStarted = await checkIfGameStartedByGameId(client, gameId);
   const waitingPlayerName = await getWaitingPlayerNameByGameId(client, gameId);
-  const isRegistered = await getIsRegisteredByUserId(client, userId);
+  const userIds = await getUserIdsByGameId(client, gameId);
+  const isPrivate = await getIsPrivateByGameId(client, gameId);
 
-  if (gameStarted && waitingPlayerName !== userName && isRegistered)
-    return {
-      socketTypesToInform: SOCKET_TYPES.ITSELF,
-      type: TYPES.ERROR,
-      payload: { message: "Registered users can't leave a running game.", stack: "" },
-    };
+  if (gameStarted && waitingPlayerName !== userName)
+    return throwError("Users can't leave a running game.");
+  await deleteGameInfoByWsId(client, wsId);
+  if (userIds.length === 1) moveGameToArchiveByGameId(client, gameId);
 
-  await deleteGameInfoByWsId(client, socket.id);
+  const broadcastObjects = [
+    {
+      socketTypesToInform: SOCKET_TYPES.ALL,
+      type: TYPES.ANNOUNCE_PLAYER_LEFT,
+      payload: { gameId, playerName: userName },
+      isPrivate,
+    },
+    {
+      type: TYPES.PLAYER_LEFT,
+      socketTypesToInform: SOCKET_TYPES.MAP_WS_ID_TO_PAYLOAD,
+      payload: Object.fromEntries(
+        wsIds.map((wsIdToInform) => [
+          wsIdToInform,
+          {
+            type: TYPES.PLAYER_LEFT,
+            socketTypesToInform: SOCKET_TYPES.MAP_WS_ID_TO_PAYLOAD,
+            payload: userName,
+          },
+        ])
+      ),
+      gameId,
+      userName,
+    },
+  ];
 
-  await broadcast(socket, {
-    socketTypesToInform: SOCKET_TYPES.ALL,
-    type: TYPES.ANNOUNCE_PLAYER_LEFT,
-    payload: { gameId, playerName: userName},
-  });
-
-  const broadcastObject = {
-    type: TYPES.PLAYER_LEFT,
-    socketTypesToInform: SOCKET_TYPES.MAP_WS_ID_TO_PAYLOAD,
-    payload: Object.fromEntries(
-      wsIds.map((wsIdToInform) => [
-        wsIdToInform,
-        {
-          type: TYPES.PLAYER_LEFT,
-          socketTypesToInform: SOCKET_TYPES.MAP_WS_ID_TO_PAYLOAD,
-          payload: userName,
-        },
-      ])
-    ),
-  };
-
-  broadcastObject.gameId = gameId;
-  broadcastObject.playerName = userName;
-  await broadcast(socket, broadcastObject);
-  return;
+  return broadcastObjects;
 };
 
 module.exports.postOrders = transactionDecorator(postOrders);

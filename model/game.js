@@ -57,6 +57,8 @@ const getUserNameByUserId = async (client, userId) => {
     `SELECT username FROM users WHERE id=$1`,
     [userId]
   );
+
+  if (!response.rows.length) return null;
   return response.rows[0].username;
 };
 
@@ -79,6 +81,7 @@ const insertNewOrder = async (client, orderParametersWrapper) => {
     [gameId, type, suit, price, userId, timestamp]
   );
 
+  if (!response.rows.length) return null;
   const newOrder = response.rows[0];
   newOrder.poster = await getUserNameByUserId(client, newOrder.poster);
   return newOrder;
@@ -114,7 +117,8 @@ const getNumWithSuitByUserId = async (client, userId, suit) => {
   `,
     [userId]
   );
-  return response.rows.length;
+  if (!response.rows.length) return null;
+  return response.rows[0][`num_${suit}`];
 };
 
 const getOrdersBySuitTypeGameId = async (client, suit, type, gameId) => {
@@ -195,7 +199,8 @@ const getStartingTimestampByGameId = async (client, gameId) => {
     [gameId]
   );
 
-  return new Date(response.rows[0].started_at).getTime();
+  if (!response.rows.length || !(response.rows[0].started_at instanceof Date)) return null;
+  return response.rows[0].started_at.getTime();
 };
 
 const getOrdersByGameId = async (client, gameId) => {
@@ -212,11 +217,12 @@ const getOrdersByGameId = async (client, gameId) => {
    orders INNER JOIN users ON
    orders.poster = users.id
    WHERE orders.game_id=$1
+   ORDER BY orders.id
   `,
     [gameId]
   );
 
-  const orders = ORDERS_EMPTY;
+  const orders = JSON.parse(JSON.stringify(ORDERS_EMPTY));
   response.rows.forEach((row) => {
     orders[
       `${row.type === "buy" ? "bids" : "offers"}${capitalize(row.suit)}`
@@ -224,6 +230,7 @@ const getOrdersByGameId = async (client, gameId) => {
       price: row.price,
       timestamp: row.timestamp,
       poster: row.username,
+      type: row.type,
       id: row.id,
     });
   });

@@ -13,7 +13,21 @@ export const Lobby = (props) => {
   const games = useSelector(selectGames);
   const userName = useSelector(selectUserName);
 
+  const [isLoading, setIsLoading] = useState(true);
   const [gameName, setGameName] = useState("");
+
+  useEffect(() => {
+    if (wsClient.current)
+      wsClient.current.send(
+        JSON.stringify({
+          type: CLIENT.MESSAGE.JOIN_LOBBY,
+        })
+      );
+  }, [wsClient]);
+
+  useEffect(() => {
+    if (userName) setIsLoading(false);
+  }, [userName]);
 
   const joinGame = (e) => {
     e.preventDefault();
@@ -56,14 +70,7 @@ export const Lobby = (props) => {
     );
   };
 
-  useEffect(() => {
-    if (wsClient.current)
-      wsClient.current.send(
-        JSON.stringify({
-          type: CLIENT.MESSAGE.JOIN_LOBBY,
-        })
-      );
-  }, [wsClient]);
+  if (isLoading) return <></>;
 
   return (
     <div className="lobby">
@@ -83,7 +90,7 @@ export const Lobby = (props) => {
                   key={game.name}
                   id={`injection-padding-${game.name}`}
                   className={`color-${
-                    game.players.includes(userName)
+                    game.players.includes(userName) || game.waitingPlayer === userName
                       ? "green"
                       : (game.hasStarted && game.waitingPlayer) ||
                         game.players.length === 5

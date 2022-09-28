@@ -36,12 +36,7 @@ import {
 } from "../app/session/session.slice";
 import { SERVER, TYPES } from "../utils/constants";
 
-export const initializeWsClient = (
-  wsClient,
-  dispatch,
-  history,
-  games
-) => {
+export const initializeWsClient = (wsClient, dispatch, history, games) => {
   if (wsClient.current) {
     wsClient.current.onerror =
       wsClient.current.onopen =
@@ -236,7 +231,9 @@ export const initializeWsClient = (
             history.push("/logged-out");
             break;
           case SERVER.MESSAGE.WRONG_USERNAME_OR_PASSWORD:
-            dispatch(setError({message: payload.message, stack: payload.stack}));
+            dispatch(
+              setError({ message: payload.message, stack: payload.stack })
+            );
             break;
           default:
             console.log("No event listener yet", payload.reason);
@@ -252,6 +249,7 @@ export const initializeWsClient = (
   wsClient.current.onclose = (event) => {
     dispatch(setUserName(""));
     dispatch(setGameName(""));
+    history.push("/login");
     wsClient.current = null;
   };
   return wsClient.current;

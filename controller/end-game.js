@@ -88,8 +88,13 @@ const calculateAndUpdateRatings = async (
     await updateRatingDataByUserId(client, userId, rating, rd, vol);
   }
 
-  return zip(ratings, newRatings).map(
-    ([rating, newRating]) => newRating.rating - rating
+  return Object.fromEntries(
+    zip(zip(ratings, newRatings), userIds).map(
+      ([[rating, newRating], userId]) => [
+        String(userId),
+        newRating.rating - rating,
+      ]
+    )
   );
 };
 
@@ -134,14 +139,21 @@ const endGame = async (client, gameId, startingChips) => {
     ([startingChipsPlayer, newChipsPlayer]) =>
       newChipsPlayer - startingChipsPlayer
   );
+
   let ratingDeltas = chipsDeltas.map((_) => null);
-  if (isRated)
-    ratingDeltas = await calculateAndUpdateRatings(
+  let ratingDeltasObject = {};
+  if (isRated) {
+    ratingDeltasObject = await calculateAndUpdateRatings(
       client,
       gameId,
       userIds,
       chipsDeltas
     );
+
+    ratingDeltas = Object.entries(ratingDeltasObject).sort(
+      ([userIdA, _], [userIdB, __]) => userIdA - userIdB
+    ).map(([_, ratingDelta]) => ratingDelta);
+  }
 
   for (const [userId, [chipsDelta, ratingDelta]] of zip(
     userIds,
@@ -163,7 +175,8 @@ const endGame = async (client, gameId, startingChips) => {
   const newGameId = await getGameIdByGameName(client, gameName);
 
   let playerNames = [];
-  userIds.push(await getUserIdByUserName(client, waitingPlayerName));
+  if (waitingPlayerName) userIds.push(await getUserIdByUserName(client, waitingPlayerName));
+  userIds.sort((a, b) => a - b);
   for (const userId of userIds) {
     await setLastGameByUserId(client, userId);
     await updateGameIdByUserId(client, newGameId, userId);
@@ -174,8 +187,15 @@ const endGame = async (client, gameId, startingChips) => {
   const response = await getCardsChipsWsIdByGameId(client, newGameId);
   const chips = response.map((row) => row.chips);
 
-  let payload = {};
+  let ratings = userIds.map((_) => null);
+  if (isRated) {
+    ratings = await getRatingsByGameId(client, newGameId);
+    ratingDeltasWithNull = userIds.map(
+      (userId) => ratingDeltasObject[String(userId)] ?? null
+    );
+  }
 
+  let payload = {};
   const wsIds = await getWsIdsByGameId(client, newGameId);
   wsIds.forEach((wsId) => {
     payload[wsId] = {
@@ -183,7 +203,23 @@ const endGame = async (client, gameId, startingChips) => {
       type: TYPES.END_GAME,
       payload: { chips, newGameId, previousGoalSuit, playerNames, ready },
     };
+
+    if (isRated) {
+      payload[wsId].payload.ratings = ratings;
+      payload[wsId].payload.ratingDeltas = ratingDeltasWithNull;
+    }
   });
+
+  const announceNextGameBroadcastObject = {
+    socketTypesToInform: SOCKET_TYPES.ALL,
+    type: TYPES.ANNOUNCE_NEXT_GAME,
+    payload: {
+      gameId,
+      newGameId,
+      playerNames,
+    },
+  };
+  if (isRated) announceNextGameBroadcastObject.payload.ratings = ratings;
 
   return [
     {
@@ -191,15 +227,7 @@ const endGame = async (client, gameId, startingChips) => {
       type: TYPES.END_GAME,
       payload,
     },
-    {
-      socketTypesToInform: SOCKET_TYPES.ALL,
-      type: TYPES.ANNOUNCE_NEXT_GAME,
-      payload: {
-        gameId,
-        newGameId,
-        playerNames,
-      },
-    },
+    announceNextGameBroadcastObject,
   ];
 };
 module.exports.endGame = transactionDecorator(endGame);

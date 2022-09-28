@@ -4,7 +4,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleCheck } from "@fortawesome/free-regular-svg-icons";
 import {
   selectChips,
-  selectGameIsLoading,
   selectPlayerNames,
   selectPreviousGoalSuit,
   selectReady,
@@ -27,7 +26,6 @@ export const PreGame = (props) => {
   const readyGlobal = useSelector(selectReady);
   const chipsGlobal = useSelector(selectChips);
   const previousGoalSuit = useSelector(selectPreviousGoalSuit);
-  const isLoading = useSelector(selectGameIsLoading);
   const userName = useSelector(selectUserName);
   const gameName = useSelector(selectGameName);
 
@@ -35,6 +33,7 @@ export const PreGame = (props) => {
   const [playerNames, setPlayerNames] = useState([]);
   const [playerIndex, setPlayerIndex] = useState(null);
   const [chips, setChips] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const handleClick = (e) => {
     e.preventDefault();
@@ -43,6 +42,12 @@ export const PreGame = (props) => {
       JSON.stringify({ type: CLIENT.MESSAGE.TOGGLE_READY })
     );
   };
+
+  useEffect(() => {
+    if (playerNames.length && chips.length && ready.length) {
+      setIsLoading(false);
+    }
+  }, [playerNames, chips, ready]);
 
   useEffect(() => {
     if (playerNamesGlobal.length)
@@ -61,7 +66,7 @@ export const PreGame = (props) => {
   return (
     <div className="pre-game-container">
       {isLoading ? (
-        <div>Pre-Game is loading. Please wait.</div>
+        <></>
       ) : (
         <div className="pre-game">
           <h2>Game {gameName}</h2>
